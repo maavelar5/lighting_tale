@@ -1,6 +1,8 @@
 #ifndef MATH_DATA_HPP
 #define MATH_DATA_HPP
 
+#include "math.h"
+
 struct vec2
 {
     float x, y;
@@ -20,9 +22,19 @@ struct vec2
         return { x + value, y + value };
     }
 
+    vec2 operator- (float value)
+    {
+        return { x - value, y - value };
+    }
+
     vec2 operator* (float value)
     {
         return { x * value, y * value };
+    }
+
+    vec2 operator/ (float value)
+    {
+        return { x / value, y / value };
     }
 
     void operator+= (vec2 a)
@@ -109,12 +121,8 @@ inline mat4 identity ()
     // {0, 0, 0, 1}
 
     for (int i = 0; i < 4; i++)
-    {
         for (int j = 0; j < 4; j++)
-        {
             matrix[i][j] = (i == j) ? 1 : 0;
-        }
-    }
 
     return matrix;
 }
@@ -122,34 +130,80 @@ inline mat4 identity ()
 inline void copy (float in[4][4], float out[4][4])
 {
     for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++)
+            out[i][j] = in[i][j];
+}
+
+inline mat4 mul (mat4 m1, mat4 m2)
+{
+    mat4 result;
+
+    for (int i = 0; i < 4; i++)
     {
         for (int j = 0; j < 4; j++)
         {
-            out[i][j] = in[i][j];
+            float val = 0;
+
+            for (int k = 0; k < 4; k++)
+            {
+                val += (m1[i][k] * m2[k][j]);
+            }
+
+            result[i][j] = val;
         }
     }
+
+    return result;
 }
 
 inline void translate (mat4 &matrix, vec2 pos)
 {
+    mat4 trans_matrix = identity ();
+
     // {1, 0, 0, pos.x}
     // {0, 1, 0, pos.y}
     // {0, 0, 1, 0    }
     // {0, 0, 0, 1    }
 
-    matrix[0][3] += pos.x;
-    matrix[1][3] += pos.y;
+    trans_matrix[0][3] = pos.x;
+    trans_matrix[1][3] = pos.y;
+
+    matrix = mul (matrix, trans_matrix);
 }
 
 inline void scale (mat4 &matrix, vec2 size)
+{
+    mat4 scale_matrix = identity ();
+
+    // {size.x, 0,      0, 0}
+    // {0,      size.y, 0, 0}
+    // {0,      0,      1, 0}
+    // {0,      0,      0, 1}
+
+    scale_matrix[0][0] = size.x;
+    scale_matrix[1][1] = size.y;
+
+    matrix = mul (matrix, scale_matrix);
+}
+
+inline void rotate (mat4 &matrix, float angle)
 {
     // {size.x, 0,      0, 0}
     // {0,      size.y, 0, 0}
     // {0,      0,      1, 0}
     // {0,      0,      0, 1}
 
-    matrix[0][0] *= size.x;
-    matrix[1][1] *= size.y;
+    angle = angle * (3.1415f / 180.f);
+
+    mat4 rotation_matrix = identity ();
+
+    rotation_matrix[0][0] = cos (angle);
+    rotation_matrix[0][1] = (-sin (angle));
+
+    rotation_matrix[1][0] = sin (angle);
+    rotation_matrix[1][1] = cos (angle);
+
+    matrix = mul (matrix, rotation_matrix);
 }
 
 inline mat4 ortho (float W, float H)

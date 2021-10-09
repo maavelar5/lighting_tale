@@ -22,19 +22,11 @@ void main ()
 
     color = vec4 (0, 0, 0, 1);
 
-    for (int x = 0; x < 120; x++)
+    for (int x = 0; x < u_max_lights; x++)
     {
-        if (u_lights[x].x != -1 && u_lights[x].y != -1)
-        {
-            float dist
-                = distance (tex_coords, vec2 (u_lights[x].x, u_lights[x].y))
-                  / 0.5;
+        float dist
+            = distance (tex_coords, vec2 (u_lights[x].x, u_lights[x].y)) / 0.5;
 
-            color += vec4 (u_radius * (result / ((dist * dist) + u_intensity)),
-                           1);
-        }
+        color += vec4 (u_radius * (result / ((dist * dist) + u_intensity)), 1);
     }
-
-    // float dist_blue = distance (tex_coords, vec2 (1, 1)) / 0.3;
-    // color = vec4 (0.09 * ((result) / ((dist * dist) + 0.01)), 1);
 }

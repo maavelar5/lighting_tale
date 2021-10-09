@@ -1,15 +1,8 @@
 #ifndef COLLISION
 #define COLLISION
 
+#include "body.hpp"
 #include "globals.hpp"
-
-struct aabb
-{
-    float x, w, y, h;
-
-    static const int offset_x = 4;
-    static const int offset_y = 6;
-};
 
 bool left (aabb a, aabb b)
 {
@@ -44,14 +37,15 @@ void collision_spacing (Body *first, aabb a, aabb c)
     if (top (a, c) && first->vel.y < 0)
     {
         first->pos.y += ((c.h - c.y));
-        first->sensor |= TOP;
         first->vel.y = 0;
+        first->sensor |= TOP;
     }
     else if (bot (a, c) && first->vel.y >= 0)
     {
         first->pos.y -= ((c.h - c.y) - 1);
-        first->sensor |= BOT;
         first->vel.y = 0;
+
+        first->sensor |= BOT;
     }
     else if (left (a, c))
     {
@@ -67,12 +61,40 @@ void collision_spacing (Body *first, aabb a, aabb c)
 
 aabb generate_aabb (Body *a)
 {
-    return {
-        a->pos.x,
-        a->pos.x + (a->size.x),
-        a->pos.y,
-        a->pos.y + (a->size.y),
-    };
+    aabb data;
+
+    switch (a->type)
+    {
+        case PLAYER:
+            data = {
+                a->pos.x + 5.f,
+                a->pos.x + (a->size.x - 4.f),
+                a->pos.y,
+                a->pos.y + (a->size.y),
+            };
+            break;
+
+        case ENEMY:
+            data = {
+                a->pos.x + 5.f,
+                a->pos.x + (a->size.x - 4.f),
+                a->pos.y,
+                a->pos.y + (a->size.y),
+            };
+            break;
+
+        case PLATFORM:
+            data = {
+                a->pos.x,
+                a->pos.x + a->size.x,
+                a->pos.y,
+                a->pos.y + (a->size.y),
+            };
+            break;
+        default: data = { 0, 0, 0, 0 }; break;
+    }
+
+    return data;
 }
 
 void solve (Body *first, Body *second)
@@ -89,29 +111,35 @@ void solve (Body *first, Body *second)
             (a.h <= b.h) ? a.h : b.h,
         };
 
-        if (first->config == COLLISION_SPACING)
-            collision_spacing (first, a, c);
-
-        if (second->config == COLLISION_SPACING)
-            collision_spacing (second, b, c);
+        switch (first->type)
+        {
+            case ENEMY: break;
+            case PLAYER: collision_spacing (first, a, c); break;
+            case PLATFORM: collision_spacing (second, b, c); break;
+            default: break;
+        }
     }
 }
 
 void check ()
 {
-    Cell *cell = first;
-
-    while (cell)
+    for (Node<Cell> *cell = grid.first; cell != 0; cell = cell->next)
     {
-        for (int i = 0; i < cell->current - 1; i++)
+        if (cell->data.bodies.length <= 1)
+            continue;
+
+        List<Body *> *bodies = &cell->data.bodies;
+
+        for (auto i = bodies->first; i != bodies->last; i = i->next)
         {
-            for (int j = i + 1; j < cell->current; j++)
+            for (auto j = i->next; j != 0; j = j->next)
             {
-                solve (cell->bodies[i], cell->bodies[j]);
+                if (i->data->type == PLATFORM && j->data->type == PLATFORM)
+                    continue;
+
+                solve (i->data, j->data);
             }
         }
-
-        cell = cell->next;
     }
 }
 

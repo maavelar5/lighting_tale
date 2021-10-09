@@ -47,14 +47,20 @@ inline void update_aspect_ratio (SDL_Window *window, const float W,
     w -= ratio;
     h -= ratio;
 
-    glViewport (w / 2, h / 2, ratio, ratio);
+    glViewport (0, 0, ratio, ratio);
+    // glViewport (w / 2, h / 2, ratio, ratio);
 }
 
-inline mat4 get_model (vec2 pos, vec2 size)
+inline mat4 get_model (vec2 pos, vec2 size, float angle = 0)
 {
     mat4 matrix = identity ();
 
     translate (matrix, pos);
+    translate (matrix, size * (0.5f));
+
+    rotate (matrix, angle);
+    translate (matrix, size * (-0.5f));
+
     scale (matrix, size);
 
     return matrix;
@@ -87,18 +93,40 @@ template <class T> struct List
         current = first = last = 0;
         length = size = 0;
     }
+
+    T &operator[] (size_t i)
+    {
+        assert (first != 0);
+
+        size_t index = 0;
+
+        for (auto node = first; node != 0; node = node->next, index++)
+        {
+            if (i == index)
+                return node->data;
+        }
+
+        return last->data;
+    }
 };
 
 template <class T> T &push (List<T> &list, T data)
 {
-    list.length++;
-
-    if (list.current != list.last)
+    if (list.length != list.size)
     {
-        list.current->data = data;
-        list.current       = list.current->next;
+        list.length++;
 
-        return list.current->prev->data;
+        list.current->data = data;
+
+        if (list.length < list.size)
+        {
+            list.current = list.current->next;
+            return list.current->prev->data;
+        }
+        else
+        {
+            return list.current->data;
+        }
     }
     else
     {
@@ -114,6 +142,7 @@ template <class T> T &push (List<T> &list, T data)
             list.last->next = node;
         }
 
+        list.length++;
         list.size++;
 
         list.current = list.last = node;
@@ -188,6 +217,150 @@ template <class T> Node<T> *remove (List<T> &list, Node<T> *node)
     delete tmp;
 
     return node;
+}
+
+template <class T> void copy_to_array (List<T> list, T *arr)
+{
+    int i = 0;
+
+    for (auto n = list.first; n != 0; n = n->next, i++)
+        arr[i] = n->data;
+}
+
+char *to_string (List<char> str)
+{
+    int   i          = 0;
+    char *new_string = (char *)malloc (sizeof (char) * str.length + 1);
+
+    for (auto n = str.first; n != limit (str); n = n->next, i++)
+    {
+        new_string[i] = n->data;
+    }
+
+    new_string[i] = '\0';
+
+    return new_string;
+}
+
+void to_list (List<char> &list, const char *str)
+{
+    for (size_t i = 0; i < strlen (str); i++)
+        push (list, str[i]);
+}
+
+float get_float (char *str)
+{
+    for (size_t i = 0; i < strlen (str); i++)
+    {
+    }
+
+    return 0;
+}
+
+vec2 vec2_from_file (char *line, size_t &current)
+{
+    vec2 value = { -1337, -1337 };
+    int  index = 0;
+    char parse[100];
+
+    for (; current < strlen (line); current++)
+    {
+        if (line[current] >= '0' && line[current] <= '9')
+        {
+            parse[index++] = line[current];
+        }
+        else if (line[current] == ',' || line[current] == '}')
+        {
+            if (index == 0)
+                continue;
+
+            parse[index] = '\0';
+
+            if (value.x == -1337)
+            {
+                value.x = strtol (parse, NULL, 10);
+                index   = 0;
+            }
+            else
+            {
+                value.y = strtol (parse, NULL, 10);
+                current++;
+                return value;
+            }
+        }
+        else if (line[current] == ' ')
+            continue;
+        else
+            index = 0;
+    }
+
+    assert (1 != 1);
+}
+
+int int_from_file (char *line, size_t &current)
+{
+    int  index = 0;
+    char parse[100];
+
+    for (; current < strlen (line); current++)
+    {
+        if (line[current] >= '0' && line[current] <= '9')
+        {
+            parse[index++] = line[current];
+        }
+        else if (index > 0)
+        {
+            parse[index] = '\0';
+
+            return strtol (parse, NULL, 10);
+        }
+        else if (line[current] == ' ')
+            continue;
+    }
+
+    assert (1 != 1);
+}
+
+void load_file ()
+{
+    FILE *  fp;
+    char *  line = NULL;
+    size_t  len  = 0;
+    ssize_t read;
+
+    fp = fopen ("level.hpp", "r");
+
+    if (!fp)
+        return;
+
+    const char *to_compare = "add_entity";
+
+    while ((read = getline (&line, &len, fp)) != -1)
+    {
+        if (read > 20)
+        {
+            char comparee[10];
+
+            for (int i = 0; i < 10; i++)
+                comparee[i] = line[i];
+
+            if (!strcmp (comparee, to_compare))
+            {
+                size_t current = 0;
+
+                // order matter baby
+                vec2 pos  = vec2_from_file (line, current);
+                vec2 size = vec2_from_file (line, current);
+                int  type = int_from_file (line, current);
+
+                printf ("%.2f, %.2f\n", pos.x, pos.y);
+                printf ("%.2f, %.2f\n", size.x, size.y);
+                printf ("%d\n", type);
+            }
+        }
+    }
+
+    fclose (fp);
 }
 
 #endif

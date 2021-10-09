@@ -13,6 +13,11 @@ uniform bool u_flip_y = true;
 uniform int  u_type  = 0;
 uniform vec4 u_color = vec4 (0, 0, 0, 1);
 
+uniform float u_radius    = 0.15;    //   = 0.2;
+uniform float u_intensity = 0.01;    //= 0.07;
+
+uniform float u_alpha = 0.5;
+
 void main ()
 {
     if (u_type == 0)
@@ -34,5 +39,12 @@ void main ()
     else if (u_type == 1)
     {
         color = u_color;
+    }
+    else if (u_type == 2)
+    {
+        float dist = distance (tex_coords, vec2 (.5, .5)) / u_radius;
+
+        color = vec4 (u_intensity * (u_color.xyz / ((dist * dist) + 0.01)),
+                      u_alpha);
     }
 }
