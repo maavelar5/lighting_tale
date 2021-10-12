@@ -6,6 +6,14 @@
 #include "texture.hpp"
 #include "utils.hpp"
 
+enum FLIP
+{
+    FLIP_X_TRUE  = 1,
+    FLIP_Y_TRUE  = 2,
+    FLIP_X_FALSE = 4,
+    FLIP_Y_FALSE = 8,
+};
+
 struct Shader
 {
     uint id, vertex_id, fragment_id, vao, vbo;
@@ -19,14 +27,6 @@ struct Square
     bool  outline;
 };
 
-enum FLIP
-{
-    FLIP_X_TRUE  = 1,
-    FLIP_Y_TRUE  = 2,
-    FLIP_X_FALSE = 4,
-    FLIP_Y_FALSE = 8,
-};
-
 struct Sprite
 {
     vec2  pos, size;
@@ -38,6 +38,7 @@ struct Sprite
 struct Light
 {
     vec2 pos, size;
+    bool offset;
 };
 
 struct Glow
@@ -46,17 +47,26 @@ struct Glow
     vec4 color;
 };
 
-List<Light> lights;
 List<Glow>  glows;
+List<Light> lights;
 
 void copy_to_array (List<Light> lights, vec2 *arr)
 {
     int i = 0;
 
-    for (auto n = lights.first; n != 0; n = n->next, i++)
+    for (auto n = lights.first; n != limit (lights); n = n->next, i++)
     {
-        arr[i].x = ((n->data.pos.x + (n->data.size.x / 2) - camera.x) / W);
-        arr[i].y = 1 - ((n->data.pos.y + (n->data.size.y / 2) - camera.y) / H);
+        if (n->data.offset)
+        {
+            arr[i].x = ((n->data.pos.x + (n->data.size.x / 2) - camera.x) / W);
+            arr[i].y
+                = 1 - ((n->data.pos.y + (n->data.size.y / 2) - camera.y) / H);
+        }
+        else
+        {
+            arr[i].x = ((n->data.pos.x + (n->data.size.x / 2)) / W);
+            arr[i].y = 1 - ((n->data.pos.y + (n->data.size.y / 2)) / H);
+        }
     }
 }
 
@@ -425,12 +435,12 @@ void batch_render (SDL_Window *window, Shader light_shader,
     glActiveTexture (GL_TEXTURE0);
     glBindTexture (GL_TEXTURE_2D, texture_color_buffer);
 
-    vec2 u_lights[lights.size];
+    vec2 u_lights[lights.length];
 
     copy_to_array (lights, u_lights);
 
-    set_uniform (light_shader, "u_max_lights", (int)lights.size);
-    set_uniform (light_shader, "u_lights", u_lights, lights.size);
+    set_uniform (light_shader, "u_max_lights", (int)lights.length);
+    set_uniform (light_shader, "u_lights", u_lights, lights.length);
 
     glDrawArrays (GL_TRIANGLES, 0, 6);
 

@@ -13,11 +13,12 @@ struct Texture
 static Texture load_xpm (const char *data[])
 {
     uint         w, h, id;
-    SDL_Surface *surface = IMG_ReadXPMFromArray ((char **)data);
+    SDL_Surface *regsurface = IMG_ReadXPMFromArray ((char **)data);
+    SDL_Surface *surface    = 0;
 
-    assert (surface != NULL);
+    assert (regsurface != NULL);
 
-    surface = SDL_ConvertSurfaceFormat (surface, SDL_PIXELFORMAT_RGBA32, 0);
+    surface = SDL_ConvertSurfaceFormat (regsurface, SDL_PIXELFORMAT_RGBA32, 0);
 
     int mode            = GL_RGB;
     int internal_format = GL_SRGB_ALPHA;
@@ -43,7 +44,10 @@ static Texture load_xpm (const char *data[])
     w = surface->w;
     h = surface->h;
 
-    return { w, h, id, surface };
+    SDL_FreeSurface (regsurface);
+    SDL_FreeSurface (surface);
+
+    return { w, h, id, 0 };
 }
 
 #endif

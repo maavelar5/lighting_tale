@@ -6,33 +6,15 @@
 
 enum INPUT_TYPE
 {
-    CLICK,
-    BUTTON,
-    KEYDOWN,
-};
-
-enum ACTIONS
-{
-    NO_ACTION = 0,
-
-    CARET_UP    = 1,
-    CARET_DOWN  = 2,
-    CARET_LEFT  = 4,
-    CARET_RIGHT = 8,
-
-    PLAYER_JUMP  = 16,
-    PLAYER_LEFT  = 32,
-    PLAYER_RIGHT = 64,
-    PLAYER_DASH  = 128,
-
-    TOGGLE_EDITOR       = 256,
-    TOGGLE_ASPECT_RATIO = 512,
+    CLICK   = SDL_MOUSEBUTTONDOWN,
+    MOTION  = SDL_MOUSEMOTION,
+    BUTTON  = SDL_CONTROLLERBUTTONDOWN,
+    KEYDOWN = SDL_KEYDOWN,
 };
 
 struct Input
 {
-    int        data;
-    ACTIONS    action;
+    int        data, action;
     INPUT_TYPE type;
 
     uint time;
@@ -53,37 +35,25 @@ struct Controller
     List<Input> map, inputs;
 };
 
-Input *find (List<Input> map, int data, INPUT_TYPE type)
+Input *find (List<Input> map, int data, int type)
 {
     for (auto i = map.first; i != limit (map); i = i->next)
-    {
-        Input input = i->data;
-
-        if (input.data == data && input.type == type)
-        {
+        if (i->data.data == data && i->data.type == type)
             return &i->data;
-        }
-    }
 
     return 0;
 }
 
-Input *find (List<Input> inputs, ACTIONS action)
+Input *find (List<Input> inputs, int action)
 {
     for (auto i = inputs.first; i != limit (inputs); i = i->next)
-    {
-        Input input = i->data;
-
-        if (input.action == action)
-        {
+        if (i->data.action == action)
             return &i->data;
-        }
-    }
 
     return 0;
 }
 
-bool just_pressed (List<Input> inputs, ACTIONS action, bool uncheck = false)
+bool just_pressed (List<Input> inputs, int action, bool uncheck = false)
 {
     Input *input = find (inputs, action);
 
@@ -97,54 +67,38 @@ bool just_pressed (List<Input> inputs, ACTIONS action, bool uncheck = false)
         return true;
     }
     else
-    {
         return false;
-    }
 }
 
 void remove (List<Input> &inputs, Input value)
 {
     for (auto i = inputs.first; i != limit (inputs);)
-    {
-        Input input = i->data;
-
-        if (input == value)
-        {
+        if (i->data == value)
             i = remove (inputs, i);
-        }
         else
-        {
             i = i->next;
-        }
+}
+
+void set (Controller &controller, int data, int type)
+{
+    Input *input = find (controller.map, data, type);
+
+    if (input)
+    {
+        input->time   = SDL_GetTicks ();
+        input->active = true;
+        controller.state |= input->action;
+
+        push (controller.inputs, *input);
     }
 }
 
-void set (Controller &controller, SDL_Event e)
+void unset (Controller &controller, int data, int type)
 {
-    if (e.type == SDL_KEYDOWN && e.key.repeat == 0)
-    {
-        Input *input = find (controller.map, e.key.keysym.sym, KEYDOWN);
+    Input *input = find (controller.inputs, data, type);
 
-        if (input)
-        {
-            input->time   = SDL_GetTicks ();
-            input->active = true;
-
-            controller.state |= input->action;
-            push (controller.inputs, *input);
-        }
-    }
-}
-
-void unset (Controller &controller, SDL_Event e)
-{
-    if (e.type == SDL_KEYUP)
-    {
-        Input *input = find (controller.inputs, e.key.keysym.sym, KEYDOWN);
-
-        if (input)
-            input->active = false;
-    }
+    if (input)
+        input->active = false;
 }
 
 void update (Controller &controller)
@@ -162,22 +116,5 @@ void update (Controller &controller)
         }
     }
 }
-
-Controller get_controller ()
-{
-    Controller controller;
-
-    push (controller.map, { SDLK_d, PLAYER_RIGHT, KEYDOWN });
-    push (controller.map, { SDLK_a, PLAYER_LEFT, KEYDOWN });
-    push (controller.map, { SDLK_j, PLAYER_DASH, KEYDOWN });
-    push (controller.map, { SDLK_SPACE, PLAYER_JUMP, KEYDOWN });
-
-    push (controller.map, { SDLK_F1, TOGGLE_EDITOR, KEYDOWN });
-    push (controller.map, { SDLK_F2, TOGGLE_ASPECT_RATIO, KEYDOWN });
-
-    return controller;
-}
-
-Controller controller = get_controller ();
 
 #endif

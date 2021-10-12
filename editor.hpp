@@ -80,6 +80,9 @@ inline void add_level ()
 
 inline void update_entities ()
 {
+    reset (bodies);
+    reset (lights);
+
     for (auto n = levels.first; n != limit (levels); n = n->next)
     {
         for (auto e = n->data.first; e != limit (n->data); e = e->next)
@@ -87,6 +90,7 @@ inline void update_entities ()
             switch (e->data.type)
             {
                 case FIRE: add_fire (e->data.pos, e->data.size); break;
+                case PLAYER: add_player (e->data.pos, e->data.size); break;
                 case PLATFORM: add_platform (e->data.pos, e->data.size); break;
                 default: break;
             }
@@ -96,34 +100,29 @@ inline void update_entities ()
     save_levels ();
 }
 
-inline void update_entities (vec2 mouse, vec2 size, BODY_TYPES type)
+inline void add_entity (vec2 pos, vec2 size, BODY_TYPES type)
 {
-    push (*current_level, { mouse, size, type });
+    push (*current_level, { pos, size, type });
 
-    for (auto n = levels.first; n != limit (levels); n = n->next)
-    {
-        for (auto e = n->data.first; e != limit (n->data); e = e->next)
-        {
-            switch (e->data.type)
-            {
-                case FIRE: add_fire (e->data.pos, e->data.size); break;
-                case PLATFORM: add_platform (e->data.pos, e->data.size); break;
-                default: break;
-            }
-        }
-    }
-
-    save_levels ();
+    update_entities ();
 }
 
-inline void add_entity (vec2 mouse, vec2 size, BODY_TYPES type)
+inline void remove_entity (vec2 pos)
 {
-    switch (type)
+    pos += camera;
+
+    for (auto n = current_level->first; n != limit (*current_level);)
     {
-        case FIRE: add_fire (mouse, size); break;
-        case PLATFORM: add_platform (mouse, size); break;
-        default: break;
+        Entity b = n->data;
+
+        if ((pos.x >= b.pos.x && pos.x <= (b.pos.x + b.size.x))
+            && (pos.y >= b.pos.y && pos.y <= (b.pos.y + b.size.y)))
+            n = remove (*current_level, n);
+        else
+            n = n->next;
     }
+
+    update_entities ();
 }
 
 #endif

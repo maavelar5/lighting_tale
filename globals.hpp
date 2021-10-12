@@ -22,18 +22,16 @@ enum SENSORS
 
 struct Body;
 
-const float W = 320.f;
-const float H = 320.f;
+float W = 320.f;
+float H = 320.f;
 
 const int MAX_LIGHTS = 120;
 
 vec2 camera = { 0.f, 0.f };
 
-bool maintain_aspect_ratio = false;
-
 const float gravity = 800.f;
 
-bool editor          = false;
-bool collision_boxes = true;
+bool run                   = true;
+bool maintain_aspect_ratio = false;
 
 #endif

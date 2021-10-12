@@ -76,11 +76,6 @@ template <class T> struct Node
         this->data = data;
         next = prev = 0;
     }
-
-    T &operator-> ()
-    {
-        return &data;
-    }
 };
 
 template <class T> struct List
@@ -112,15 +107,15 @@ template <class T> struct List
 
 template <class T> T &push (List<T> &list, T data)
 {
-    if (list.length != list.size)
+    if (list.length < list.size)
     {
         list.length++;
-
         list.current->data = data;
 
         if (list.length < list.size)
         {
             list.current = list.current->next;
+
             return list.current->prev->data;
         }
         else
@@ -142,18 +137,22 @@ template <class T> T &push (List<T> &list, T data)
             list.last->next = node;
         }
 
-        list.length++;
-        list.size++;
+        list.length = ++list.size;
 
         list.current = list.last = node;
 
-        return list.current->data;
+        return list.last->data;
     }
 }
 
 template <class T> Node<T> *limit (List<T> &list)
 {
-    return (list.size == list.length) ? 0 : list.current;
+    if (list.current == 0)
+        return list.first;
+    else if (list.size == list.length)
+        return 0;
+    else
+        return list.current;
 }
 
 template <class T> void for_each (List<T> &list, void (*fn_ptr) (T &t))
@@ -248,15 +247,6 @@ void to_list (List<char> &list, const char *str)
         push (list, str[i]);
 }
 
-float get_float (char *str)
-{
-    for (size_t i = 0; i < strlen (str); i++)
-    {
-    }
-
-    return 0;
-}
-
 vec2 vec2_from_file (char *line, size_t &current)
 {
     vec2 value = { -1337, -1337 };
@@ -295,6 +285,7 @@ vec2 vec2_from_file (char *line, size_t &current)
     }
 
     assert (1 != 1);
+    return { 0, 0 };
 }
 
 int int_from_file (char *line, size_t &current)
@@ -319,48 +310,50 @@ int int_from_file (char *line, size_t &current)
     }
 
     assert (1 != 1);
+
+    return -1;
 }
 
 void load_file ()
 {
-    FILE *  fp;
-    char *  line = NULL;
-    size_t  len  = 0;
-    ssize_t read;
+    // FILE *  fp;
+    // char *  line = NULL;
+    // size_t  len  = 0;
+    // ssize_t read;
 
-    fp = fopen ("level.hpp", "r");
+    // fp = fopen ("level.hpp", "r");
 
-    if (!fp)
-        return;
+    // if (!fp)
+    //     return;
 
-    const char *to_compare = "add_entity";
+    // const char *to_compare = "add_entity";
 
-    while ((read = getline (&line, &len, fp)) != -1)
-    {
-        if (read > 20)
-        {
-            char comparee[10];
+    // while ((read = getline (&line, &len, fp)) != -1)
+    // {
+    //     if (read > 20)
+    //     {
+    //         char comparee[10];
 
-            for (int i = 0; i < 10; i++)
-                comparee[i] = line[i];
+    //         for (int i = 0; i < 10; i++)
+    //             comparee[i] = line[i];
 
-            if (!strcmp (comparee, to_compare))
-            {
-                size_t current = 0;
+    //         if (!strcmp (comparee, to_compare))
+    //         {
+    //             size_t current = 0;
 
-                // order matter baby
-                vec2 pos  = vec2_from_file (line, current);
-                vec2 size = vec2_from_file (line, current);
-                int  type = int_from_file (line, current);
+    //             // order matter baby
+    //             vec2 pos  = vec2_from_file (line, current);
+    //             vec2 size = vec2_from_file (line, current);
+    //             int  type = int_from_file (line, current);
 
-                printf ("%.2f, %.2f\n", pos.x, pos.y);
-                printf ("%.2f, %.2f\n", size.x, size.y);
-                printf ("%d\n", type);
-            }
-        }
-    }
+    //             printf ("%.2f, %.2f\n", pos.x, pos.y);
+    //             printf ("%.2f, %.2f\n", size.x, size.y);
+    //             printf ("%d\n", type);
+    //         }
+    //     }
+    // }
 
-    fclose (fp);
+    // fclose (fp);
 }
 
 #endif

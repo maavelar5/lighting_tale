@@ -44,7 +44,6 @@ void collision_spacing (Body *first, aabb a, aabb c)
     {
         first->pos.y -= ((c.h - c.y) - 1);
         first->vel.y = 0;
-
         first->sensor |= BOT;
     }
     else if (left (a, c))
@@ -123,16 +122,23 @@ void solve (Body *first, Body *second)
 
 void check ()
 {
-    for (Node<Cell> *cell = grid.first; cell != 0; cell = cell->next)
+    for (Node<Cell> *cell = grid.first; cell != limit (grid); cell = cell->next)
     {
         if (cell->data.bodies.length <= 1)
             continue;
 
-        List<Body *> *bodies = &cell->data.bodies;
+        List<Body *> *bodies     = &cell->data.bodies;
+        Node<Body *> *cond       = limit (*bodies);
+        Node<Body *> *inner_cond = 0;
 
-        for (auto i = bodies->first; i != bodies->last; i = i->next)
+        if (!cond)
+            cond = bodies->last;
+
+        for (auto i = bodies->first; i != cond; i = i->next)
         {
-            for (auto j = i->next; j != 0; j = j->next)
+            inner_cond = cond->next;
+
+            for (auto j = i->next; j != inner_cond; j = j->next)
             {
                 if (i->data->type == PLATFORM && j->data->type == PLATFORM)
                     continue;
