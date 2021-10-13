@@ -122,28 +122,29 @@ void solve (Body *first, Body *second)
 
 void check ()
 {
-    for (Node<Cell> *cell = grid.first; cell != limit (grid); cell = cell->next)
+    for (Cell *cell = grid.first; cell != limit (grid); cell = cell->next)
     {
-        if (cell->data.bodies.length <= 1)
+        if (cell->bodies.length <= 1)
             continue;
 
-        List<Body *> *bodies     = &cell->data.bodies;
-        Node<Body *> *cond       = limit (*bodies);
-        Node<Body *> *inner_cond = 0;
+        BodyPTRS *bodies = &cell->bodies;
+
+        BodyPTR *cond       = limit (*bodies);
+        BodyPTR *inner_cond = 0;
 
         if (!cond)
             cond = bodies->last;
 
-        for (auto i = bodies->first; i != cond; i = i->next)
+        for (BodyPTR *i = bodies->first; i != cond; i = i->next)
         {
             inner_cond = cond->next;
 
-            for (auto j = i->next; j != inner_cond; j = j->next)
+            for (BodyPTR *j = i->next; j != inner_cond; j = j->next)
             {
-                if (i->data->type == PLATFORM && j->data->type == PLATFORM)
+                if (i->body->type == PLATFORM && j->body->type == PLATFORM)
                     continue;
 
-                solve (i->data, j->data);
+                solve (i->body, j->body);
             }
         }
     }

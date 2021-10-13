@@ -20,40 +20,41 @@ struct Input
     uint time;
     bool active;
 
-    bool operator== (Input i)
-    {
-        if (data == i.data && action == i.action && type == i.type)
-            return true;
-        else
-            return false;
-    }
+    NODE_PROPERTIES (Input)
 };
+
+struct Input_List
+{
+    LIST_PROPERTIES (Input);
+};
+
+COMMON_FUNCTIONS (Input, Input_List);
 
 struct Controller
 {
-    uint        state;
-    List<Input> map, inputs;
+    uint       state;
+    Input_List map, inputs;
 };
 
-Input *find (List<Input> map, int data, int type)
+Input *find (Input_List map, int data, int type)
 {
-    for (auto i = map.first; i != limit (map); i = i->next)
-        if (i->data.data == data && i->data.type == type)
-            return &i->data;
+    for (Input *i = map.first; i != limit (map); i = i->next)
+        if (i->data == data && i->type == type)
+            return i;
 
     return 0;
 }
 
-Input *find (List<Input> inputs, int action)
+Input *find (Input_List inputs, int action)
 {
-    for (auto i = inputs.first; i != limit (inputs); i = i->next)
-        if (i->data.action == action)
-            return &i->data;
+    for (Input *i = inputs.first; i != limit (inputs); i = i->next)
+        if (i->action == action)
+            return i;
 
     return 0;
 }
 
-bool just_pressed (List<Input> inputs, int action, bool uncheck = false)
+bool just_pressed (Input_List inputs, int action, bool uncheck = false)
 {
     Input *input = find (inputs, action);
 
@@ -70,45 +71,45 @@ bool just_pressed (List<Input> inputs, int action, bool uncheck = false)
         return false;
 }
 
-void remove (List<Input> &inputs, Input value)
+void remove (Input_List *inputs, Input value)
 {
-    for (auto i = inputs.first; i != limit (inputs);)
-        if (i->data == value)
+    for (Input *i = inputs->first; i != limit (*inputs);)
+        if (i->action == value.action && i->type == value.type)
             i = remove (inputs, i);
         else
             i = i->next;
 }
 
-void set (Controller &controller, int data, int type)
+void set (Controller *controller, int data, int type)
 {
-    Input *input = find (controller.map, data, type);
+    Input *input = find (controller->map, data, type);
 
     if (input)
     {
         input->time   = SDL_GetTicks ();
         input->active = true;
-        controller.state |= input->action;
+        controller->state |= input->action;
 
-        push (controller.inputs, *input);
+        push (&controller->inputs, *input);
     }
 }
 
-void unset (Controller &controller, int data, int type)
+void unset (Controller *controller, int data, int type)
 {
-    Input *input = find (controller.inputs, data, type);
+    Input *input = find (controller->inputs, data, type);
 
     if (input)
         input->active = false;
 }
 
-void update (Controller &controller)
+void update (Controller *controller)
 {
-    for (auto i = controller.inputs.first; i != limit (controller.inputs);)
+    for (auto i = controller->inputs.first; i != limit (controller->inputs);)
     {
-        if (!i->data.active && SDL_GetTicks () - i->data.time > 100)
+        if (!i->active && SDL_GetTicks () - i->time > 100)
         {
-            controller.state &= ~i->data.action;
-            i = remove (controller.inputs, i);
+            controller->state &= ~i->action;
+            i = remove (&controller->inputs, i);
         }
         else
         {

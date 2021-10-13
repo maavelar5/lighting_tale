@@ -20,7 +20,7 @@ void main ()
 {
     vec3 result = texture (u_image, tex_coords).rgb;
 
-    color = vec4 (0, 0, 0, 1);
+    color = vec4 (0, 0, 0, 1.f);
 
     for (int x = 0; x < u_max_lights; x++)
     {
@@ -29,4 +29,6 @@ void main ()
 
         color += vec4 (u_radius * (result / ((dist * dist) + u_intensity)), 1);
     }
+
+    // color += vec4 ((u_radius * (result / u_intensity)), 1);
 }

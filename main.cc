@@ -53,6 +53,8 @@ int main (int argc, char **argv)
 
     time_data::init ();
 
+    SDL_SetRelativeMouseMode (SDL_TRUE);
+
     while (run)
     {
         time_data::update ();

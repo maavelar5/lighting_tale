@@ -4,38 +4,52 @@
 #include "globals.hpp"
 #include "utils.hpp"
 
-struct Cell
+struct BodyPTR
 {
-    int          x, y;
-    List<Body *> bodies, platforms;
-
-    bool operator== (Cell cell)
-    {
-        if (x == cell.x && y == cell.y)
-            return true;
-        else
-            return false;
-    }
+    Body *body;
+    NODE_PROPERTIES (BodyPTR);
 };
 
-Cell &find (List<Cell> &grid, Cell cell)
+struct BodyPTRS
 {
-    for (Node<Cell> *i = grid.first; i != limit (grid); i = i->next)
-        if (i->data == cell)
-            return i->data;
+    LIST_PROPERTIES (BodyPTR);
+};
 
-    return push (grid, cell);
+struct Cell
+{
+    int      x, y;
+    BodyPTRS bodies;
+
+    NODE_PROPERTIES (Cell)
+};
+
+struct Grid
+{
+    LIST_PROPERTIES (Cell)
+};
+
+COMMON_FUNCTIONS (BodyPTR, BodyPTRS);
+
+Cell *push (Grid *list, Cell data) PUSH (Cell);
+Cell *limit (Grid list) LIMIT;
+
+inline Cell *find (Grid *list, Cell cell)
+{
+    for (Cell *i = list->first; i != limit (*list); i = i->next)
+        if (i->x == cell.x && i->y == cell.y)
+            return i;
+
+    return push (list, cell);
 }
 
-void reset (List<Cell> &grid)
+void reset (Grid *list)
 {
-    for (Node<Cell> *i = grid.first; i != limit (grid); i = i->next)
-        reset (i->data.bodies);
+    for (Cell *i = list->first; i != limit (*list); i = i->next)
+        reset (&i->bodies);
 
-    grid.current = grid.first;
-    grid.length  = 0;
+    RESET;
 }
 
-List<Cell> grid;
+Grid grid = { 0, 0, 0, 0, 0 };
 
 #endif

@@ -33,17 +33,18 @@ struct aabb
 struct Body
 {
     uint  sensor, config;
-    vec2  pos, prev, size, vel, accel;
+    vec2  pos, prev_pos, size, vel, accel;
     float speed, angle;
 
     BODY_TYPES type;
     Animation *animation;
-    // int light_index;
+
+    NODE_PROPERTIES (Body);
 };
 
 const int GRID_SIZE = 100;
 
-void push (List<Cell> &grid, Body *body)
+void push (Grid *grid, Body *body)
 {
     ivec4 locator = {
         (int)body->pos.x / GRID_SIZE,
@@ -56,9 +57,9 @@ void push (List<Cell> &grid, Body *body)
     {
         for (int j = locator.y; j <= locator.h; j++)
         {
-            Cell &found = find (grid, { i, j });
+            Cell *found = find (grid, { i, j });
 
-            push (found.bodies, body);
+            push (&found->bodies, { body, 0, 0 });
         }
     }
 }
@@ -69,15 +70,24 @@ Body get_body ()
 
     b.speed = b.angle = 0;
     b.sensor = b.config = NONE;
-    b.prev = b.accel = b.pos = b.size = b.vel = { 0.f, 0.f };
+    b.prev_pos = b.accel = b.pos = b.size = b.vel = { 0.f, 0.f };
 
     b.type = PLATFORM;
 
     b.animation = 0;
 
+    b.next = b.prev = 0;
+
     return b;
 }
 
-List<Body> bodies;
+struct Bodies
+{
+    LIST_PROPERTIES (Body);
+};
+
+COMMON_FUNCTIONS (Body, Bodies)
+
+Bodies bodies;
 
 #endif

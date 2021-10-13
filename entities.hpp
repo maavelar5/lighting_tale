@@ -12,10 +12,9 @@ enum PLAYING_ACTIONS
     PLAYER_RIGHT = 4,
     PLAYER_DASH  = 8,
 
-    TOGGLE_EDITOR          = 16,
+    SHOW_EDITOR            = 16,
     TOGGLE_ASPECT_RATIO    = 32,
     TOGGLE_COLLISION_BOXES = 64,
-
 };
 
 void add_platform (vec2 pos, vec2 size)
@@ -26,7 +25,7 @@ void add_platform (vec2 pos, vec2 size)
     b.size = size;
     b.type = PLATFORM;
 
-    push (bodies, b);
+    push (&bodies, b);
 }
 
 void add_fire (vec2 pos, vec2 size)
@@ -51,8 +50,8 @@ void add_fire (vec2 pos, vec2 size)
         fire_coords,
     };
 
-    push (lights, { b.pos, b.size, true });
-    push (bodies, b);
+    push (&lights, (Light) { b.pos, b.size, true });
+    push (&bodies, b);
 }
 
 void draw_platform (Body &b)
@@ -66,22 +65,23 @@ void draw_platform (Body &b)
     sprite.pos  = b.pos - camera;
     sprite.size = b.size;
 
-    push (squares, { sprite.pos, sprite.size, { 0, .5, .5, 0.2 }, 0, 0 });
+    push (&squares,
+          (Square) { sprite.pos, sprite.size, { 0, .5, .5, 0.2 }, 0, 0 });
 }
 
 void draw_fire (Body &b)
 {
-    push (glows, { b.pos - camera, b.size, { 1.f, .5f, 0, 0.5f } });
-    push (sprites, {
-                       b.pos - camera,
-                       b.size,
-                       update (*b.animation),
-                       0,
-                       FLIP_X_FALSE,
-                   });
+    push (&glows, { b.pos - camera, b.size, { 1.f, .5f, 0, 0.5f } });
+    push (&sprites, {
+                        b.pos - camera,
+                        b.size,
+                        update (*b.animation),
+                        0,
+                        FLIP_X_FALSE,
+                    });
 }
 
-Body &add_player (vec2 pos, vec2 size)
+Body *add_player (vec2 pos, vec2 size)
 {
     Body b = get_body ();
 
@@ -92,26 +92,26 @@ Body &add_player (vec2 pos, vec2 size)
     b.speed  = 200.f;
     b.accel  = { 0, 0 };
 
-    return push (bodies, b);
+    return push (&bodies, b);
 }
 
-void move_player (Body &b, Controller *controller)
+void move_player (Body *b, Controller *controller)
 {
-    b.prev = b.pos;
+    b->prev_pos = b->pos;
 
     if (just_pressed (controller->inputs, PLAYER_JUMP))
     {
-        if (b.sensor & (LEFT | RIGHT) && !(b.sensor & BOT))
+        if (b->sensor & (LEFT | RIGHT) && !(b->sensor & BOT))
         {
             just_pressed (controller->inputs, PLAYER_JUMP, true);
 
-            b.vel.x = (b.vel.x > 0) ? -b.speed : b.speed;
-            b.vel.y = -250.f;
+            b->vel.x = (b->vel.x > 0) ? -b->speed : b->speed;
+            b->vel.y = -250.f;
         }
-        else if (b.sensor & BOT)
+        else if (b->sensor & BOT)
         {
             just_pressed (controller->inputs, PLAYER_JUMP, true);
-            b.vel.y = -250.f;
+            b->vel.y = -250.f;
         }
     }
 
@@ -119,72 +119,74 @@ void move_player (Body &b, Controller *controller)
     {
         if (controller->state & PLAYER_LEFT)
         {
-            b.accel.x = (b.vel.x > 0) ? -b.speed * 8 : -b.speed;
+            b->accel.x = (b->vel.x > 0) ? -b->speed * 8 : -b->speed;
 
-            if (b.vel.x < -b.speed)
-                b.accel.x = 0;
+            if (b->vel.x < -b->speed)
+                b->accel.x = 0;
         }
         else if (controller->state & PLAYER_RIGHT)
         {
-            b.accel.x = (b.vel.x < 0) ? b.speed * 8 : b.speed;
+            b->accel.x = (b->vel.x < 0) ? b->speed * 8 : b->speed;
 
-            if (b.vel.x > b.speed)
-                b.accel.x = 0;
+            if (b->vel.x > b->speed)
+                b->accel.x = 0;
         }
 
-        b.vel.x += (b.accel.x * time_data::step);
+        b->vel.x += (b->accel.x * time_data::step);
     }
     else
     {
-        if (b.vel.x > 0)
-            b.accel.x = -b.speed * 8;
-        else if (b.vel.x < 0)
-            b.accel.x = b.speed * 8;
+        if (b->vel.x > 0)
+            b->accel.x = -b->speed * 8;
+        else if (b->vel.x < 0)
+            b->accel.x = b->speed * 8;
 
-        b.vel.x += (b.accel.x * time_data::step);
+        b->vel.x += (b->accel.x * time_data::step);
 
-        if ((b.accel.x > 0 && b.vel.x > 0) || (b.accel.x < 0 && b.vel.x < 0))
-            b.vel.x = 0;
+        if ((b->accel.x > 0 && b->vel.x > 0)
+            || (b->accel.x < 0 && b->vel.x < 0))
+            b->vel.x = 0;
     }
 
-    if (!(b.sensor & BOT))
+    if (!(b->sensor & BOT))
     {
         float local_gravity = gravity;
         float max_gravity   = 400.f;
 
-        if (b.vel.y > 0)
+        if (b->vel.y > 0)
         {
-            if (b.sensor & LEFT && controller->state & PLAYER_LEFT)
+            if (b->sensor & LEFT && controller->state & PLAYER_LEFT)
                 max_gravity /= 8.f;
-            else if (b.sensor & RIGHT && controller->state & PLAYER_RIGHT)
+            else if (b->sensor & RIGHT && controller->state & PLAYER_RIGHT)
                 max_gravity /= 8.f;
         }
 
-        b.vel.y += (local_gravity * time_data::step);
+        b->vel.y += (local_gravity * time_data::step);
 
-        if (b.vel.y > max_gravity)
-            b.vel.y = max_gravity;
+        if (b->vel.y > max_gravity)
+            b->vel.y = max_gravity;
     }
 
-    b.pos += (b.vel * time_data::step);
+    b->pos += (b->vel * time_data::step);
 
-    if ((b.accel.x > 0 || b.vel.x > 0) && b.pos.x - camera.x > ((W / 3) * 2))
+    if ((b->accel.x > 0 || b->vel.x > 0) && b->pos.x - camera.x > ((W / 3) * 2))
     {
-        camera.x += fabs (b.pos.x - b.prev.x);
+        camera.x += fabs (b->pos.x - b->prev_pos.x);
     }
-    else if ((b.accel.x < 0 || b.vel.x < 0) && b.pos.x - camera.x < (W / 3))
+    else if ((b->accel.x < 0 || b->vel.x < 0) && b->pos.x - camera.x < (W / 3))
     {
-        camera.x -= fabs (b.pos.x - b.prev.x);
+        camera.x -= fabs (b->pos.x - b->prev_pos.x);
     }
 
-    if (b.vel.y > 0 && b.pos.y - camera.y > ((H / 3) * 2.3)
-        && !(b.sensor & BOT))
+    if (b->vel.y > 0 && b->pos.y - camera.y > ((H / 3) * 2.3)
+        && !(b->sensor & BOT))
     {
-        camera.y += fabs (b.pos.y - b.prev.y);
+        camera.y += fabs (b->pos.y - b->prev_pos.y);
     }
-    else if (b.vel.y < 0 && b.pos.y - camera.y < (H / 3) && !(b.sensor & TOP))
+    else if (b->vel.y < 0 && b->pos.y - camera.y < (H / 3)
+             && !(b->sensor & TOP))
     {
-        camera.y -= fabs (b.pos.y - b.prev.y);
+        camera.y -= fabs (b->pos.y - b->prev_pos.y);
     }
 
     if (camera.y < 0)
@@ -192,9 +194,9 @@ void move_player (Body &b, Controller *controller)
     if (camera.x < 0)
         camera.x = 0;
 
-    b.sensor = NONE;
+    b->sensor = NONE;
 
-    push (grid, &b);
+    push (&grid, b);
 }
 
 void draw_player (Body &b, Controller *controller)
@@ -247,7 +249,7 @@ void draw_player (Body &b, Controller *controller)
         hold_coords,
     };
 
-    static Light *light = &push (lights, { b.pos, b.size, true });
+    static Light *light = push (&lights, { b.pos, b.size, true });
 
     light->pos  = b.pos;
     light->size = b.size;
@@ -264,7 +266,7 @@ void draw_player (Body &b, Controller *controller)
 
     if (b.sensor & (LEFT | RIGHT))
         animation = &hold;
-    if (!(b.sensor & BOT))
+    else if (!(b.sensor & BOT))
         animation = &jumping;
     else if (controller->state & (PLAYER_LEFT | PLAYER_RIGHT))
         animation = &walking;
@@ -273,8 +275,8 @@ void draw_player (Body &b, Controller *controller)
 
     sprite = update (*animation);
 
-    push (glows, { b.pos - camera, b.size, { 0.0f, 0.5f, .5f, 0.5f } });
-    push (sprites, { b.pos - camera, b.size, sprite, b.angle, flip });
+    push (&glows, (Glow) { b.pos - camera, b.size, { 0.0f, 0.5f, .5f, 0.5f } });
+    push (&sprites, (Sprite) { b.pos - camera, b.size, sprite, b.angle, flip });
 }
 
 #endif

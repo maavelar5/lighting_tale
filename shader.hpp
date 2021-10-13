@@ -25,6 +25,8 @@ struct Square
     vec4  color;
     float angle;
     bool  outline;
+
+    NODE_PROPERTIES (Square);
 };
 
 struct Sprite
@@ -33,39 +35,71 @@ struct Sprite
     vec4  sprite;
     float angle;
     uint  flip;
+
+    NODE_PROPERTIES (Sprite);
 };
 
 struct Light
 {
     vec2 pos, size;
     bool offset;
+
+    NODE_PROPERTIES (Light);
 };
 
 struct Glow
 {
     vec2 pos, size;
     vec4 color;
+
+    NODE_PROPERTIES (Glow);
 };
 
-List<Glow>  glows;
-List<Light> lights;
+struct Lights
+{
+    LIST_PROPERTIES (Light);
+};
 
-void copy_to_array (List<Light> lights, vec2 *arr)
+struct Glows
+{
+    LIST_PROPERTIES (Glow);
+};
+
+struct Squares
+{
+    LIST_PROPERTIES (Square);
+};
+
+struct Sprites
+{
+    LIST_PROPERTIES (Sprite);
+};
+
+COMMON_FUNCTIONS (Glow, Glows);
+COMMON_FUNCTIONS (Light, Lights);
+COMMON_FUNCTIONS (Square, Squares);
+COMMON_FUNCTIONS (Sprite, Sprites);
+
+Glows   glows;
+Lights  lights;
+Squares squares;
+Sprites sprites;
+
+void copy_to_array (Lights lights, vec2 *arr)
 {
     int i = 0;
 
-    for (auto n = lights.first; n != limit (lights); n = n->next, i++)
+    for (Light *n = lights.first; n != limit (lights); n = n->next, i++)
     {
-        if (n->data.offset)
+        if (n->offset)
         {
-            arr[i].x = ((n->data.pos.x + (n->data.size.x / 2) - camera.x) / W);
-            arr[i].y
-                = 1 - ((n->data.pos.y + (n->data.size.y / 2) - camera.y) / H);
+            arr[i].x = ((n->pos.x + (n->size.x / 2) - camera.x) / W);
+            arr[i].y = 1 - ((n->pos.y + (n->size.y / 2) - camera.y) / H);
         }
         else
         {
-            arr[i].x = ((n->data.pos.x + (n->data.size.x / 2)) / W);
-            arr[i].y = 1 - ((n->data.pos.y + (n->data.size.y / 2)) / H);
+            arr[i].x = ((n->pos.x + (n->size.x / 2)) / W);
+            arr[i].y = 1 - ((n->pos.y + (n->size.y / 2)) / H);
         }
     }
 }
@@ -375,9 +409,6 @@ void init_frame_buffer (SDL_Window *window, bool erase = false)
     glBindFramebuffer (GL_FRAMEBUFFER, 0);
 }
 
-List<Square> squares;
-List<Sprite> sprites;
-
 void batch_render (SDL_Window *window, Shader light_shader,
                    Shader sprite_shader, Texture spritesheet)
 {
@@ -415,10 +446,10 @@ void batch_render (SDL_Window *window, Shader light_shader,
 
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     for (auto i = sprites.first; i != limit (sprites); i = i->next)
-        draw (sprite_shader, spritesheet, i->data);
+        draw (sprite_shader, spritesheet, *i);
 
     for (auto i = squares.first; i != limit (squares); i = i->next)
-        draw (sprite_shader, i->data);
+        draw (sprite_shader, *i);
 
     if (maintain_aspect_ratio)
         glViewport (w / 2, h / 2, ratio, ratio);
@@ -452,13 +483,13 @@ void batch_render (SDL_Window *window, Shader light_shader,
 
     glBlendFunc (GL_SRC_ALPHA, GL_ONE);
     for (auto i = glows.first; i != limit (glows); i = i->next)
-        draw (sprite_shader, i->data);
+        draw (sprite_shader, *i);
 
     SDL_GL_SwapWindow (window);
 
-    reset (squares);
-    reset (sprites);
-    reset (glows);
+    reset (&squares);
+    reset (&sprites);
+    reset (&glows);
 }
 
 #endif
