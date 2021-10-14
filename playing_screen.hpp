@@ -8,47 +8,27 @@
 #include "entities.hpp"
 #include "globals.hpp"
 
-enum EDITOR_ACTIONS
-{
-    MOVE_UP    = 1,
-    MOVE_DOWN  = 2,
-    MOVE_LEFT  = 4,
-    MOVE_RIGHT = 8,
-
-    INCREASE_H = 16,
-    INCREASE_W = 32,
-
-    INCREASE_SIZE_W = 64,
-    INCREASE_SIZE_H = 128,
-
-    DECREASE_SIZE_W = 256,
-    DECREASE_SIZE_H = 512,
-
-    HIDE_EDITOR = 1024,
-
-    INCREASE_EDITOR = 2048,
-    DECREASE_EDITOR = 4096,
-};
-
 enum PLAYING_SCREEN_CONFIG
 {
     VISIBLE_EDITOR  = 1,
     GRID_BOXES      = 2,
     COLLISION_BOXES = 4,
+    ASPECT_RATIO    = 8,
+    LIGHT_ROOM      = 16,
 };
 
 Controller get_playing_screen_controller ()
 {
     Controller controller;
 
-    push (&controller.map, { SDLK_d, PLAYER_RIGHT, KEYDOWN });
-    push (&controller.map, { SDLK_a, PLAYER_LEFT, KEYDOWN });
-    push (&controller.map, { SDLK_j, PLAYER_DASH, KEYDOWN });
-    push (&controller.map, { SDLK_SPACE, PLAYER_JUMP, KEYDOWN });
+    push (&controller.map, { SDLK_d, PLAYER_RIGHT, SDL_KEYDOWN });
+    push (&controller.map, { SDLK_a, PLAYER_LEFT, SDL_KEYDOWN });
+    push (&controller.map, { SDLK_j, PLAYER_DASH, SDL_KEYDOWN });
+    push (&controller.map, { SDLK_SPACE, PLAYER_JUMP, SDL_KEYDOWN });
 
-    push (&controller.map, { SDLK_F1, SHOW_EDITOR, KEYDOWN });
-    push (&controller.map, { SDLK_F2, TOGGLE_ASPECT_RATIO, KEYDOWN });
-    push (&controller.map, { SDLK_F3, TOGGLE_COLLISION_BOXES, KEYDOWN });
+    push (&controller.map, { SDLK_F1, SHOW_EDITOR, SDL_KEYDOWN });
+    push (&controller.map, { SDLK_F2, TOGGLE_ASPECT_RATIO, SDL_KEYDOWN });
+    push (&controller.map, { SDLK_F3, TOGGLE_COLLISION_BOXES, SDL_KEYDOWN });
 
     return controller;
 }
@@ -57,21 +37,21 @@ Controller get_editor_screen_controller ()
 {
     Controller controller;
 
-    push (&controller.map, { SDLK_d, MOVE_RIGHT, KEYDOWN });
-    push (&controller.map, { SDLK_a, MOVE_LEFT, KEYDOWN });
-    push (&controller.map, { SDLK_w, MOVE_UP, KEYDOWN });
-    push (&controller.map, { SDLK_s, MOVE_DOWN, KEYDOWN });
+    push (&controller.map, { SDLK_d, MOVE_RIGHT, SDL_KEYDOWN });
+    push (&controller.map, { SDLK_a, MOVE_LEFT, SDL_KEYDOWN });
+    push (&controller.map, { SDLK_w, MOVE_UP, SDL_KEYDOWN });
+    push (&controller.map, { SDLK_s, MOVE_DOWN, SDL_KEYDOWN });
 
-    push (&controller.map, { SDLK_UP, DECREASE_SIZE_H, KEYDOWN });
-    push (&controller.map, { SDLK_LEFT, DECREASE_SIZE_W, KEYDOWN });
-    push (&controller.map, { SDLK_DOWN, INCREASE_SIZE_H, KEYDOWN });
-    push (&controller.map, { SDLK_RIGHT, INCREASE_SIZE_W, KEYDOWN });
+    push (&controller.map, { SDLK_UP, DECREASE_SIZE_H, SDL_KEYDOWN });
+    push (&controller.map, { SDLK_LEFT, DECREASE_SIZE_W, SDL_KEYDOWN });
+    push (&controller.map, { SDLK_DOWN, INCREASE_SIZE_H, SDL_KEYDOWN });
+    push (&controller.map, { SDLK_RIGHT, INCREASE_SIZE_W, SDL_KEYDOWN });
 
-    push (&controller.map, { SDLK_n, INCREASE_EDITOR, KEYDOWN });
-    push (&controller.map, { SDLK_m, DECREASE_EDITOR, KEYDOWN });
+    push (&controller.map, { SDLK_n, INCREASE_EDITOR, SDL_KEYDOWN });
+    push (&controller.map, { SDLK_m, DECREASE_EDITOR, SDL_KEYDOWN });
 
-    push (&controller.map, { SDLK_F1, HIDE_EDITOR, KEYDOWN });
-    push (&controller.map, { SDLK_F3, TOGGLE_COLLISION_BOXES, KEYDOWN });
+    push (&controller.map, { SDLK_F1, HIDE_EDITOR, SDL_KEYDOWN });
+    push (&controller.map, { SDLK_F3, TOGGLE_COLLISION_BOXES, SDL_KEYDOWN });
 
     return controller;
 }
@@ -203,15 +183,22 @@ void show_collision_grid ()
     }
 }
 
+struct Mouse
+{
+    vec2 pos, prev;
+};
+
 void editor_screen (SDL_Window *window, Shader shader, int *config)
 {
     static int sprite_index = 0;
 
-    static vec2 size = { 16.f, 16.f }, mouse = { 0.f, 0.f };
+    static bool   clicked = false;
+    static vec2   size    = { 16.f, 16.f };
+    static vec2   mouse   = { 0.f, 0.f };
+    static vec2   prev    = { 0.f, 0.f };
+    static Light *light   = push (&lights, { mouse, { 16, 16 }, false });
 
     static Controller controller = get_editor_screen_controller ();
-
-    static Light *mouse_light = push (&lights, { mouse, { 16, 16 }, false });
 
     SDL_Event e;
 
@@ -220,20 +207,47 @@ void editor_screen (SDL_Window *window, Shader shader, int *config)
         if (e.type == SDL_QUIT)
             run = false;
         else if (e.type == SDL_KEYDOWN && e.key.repeat == 0)
-            set (&controller, e.key.keysym.sym, KEYDOWN);
+            set (&controller, e.key.keysym.sym, SDL_KEYDOWN);
         else if (e.type == SDL_KEYUP)
-            unset (&controller, e.key.keysym.sym, KEYDOWN);
+            unset (&controller, e.key.keysym.sym, SDL_KEYDOWN);
         else if (e.type == SDL_MOUSEMOTION)
         {
+            if (!clicked)
+            {
+                prev.x = e.motion.x;
+                prev.y = e.motion.y;
+            }
+
             mouse.x = e.motion.x;
             mouse.y = e.motion.y;
 
-            mouse_light->pos = mouse;
+            light->pos = mouse;
+
+            size = mouse - prev;
+        }
+        else if (e.type == SDL_MOUSEBUTTONDOWN)
+        {
+            prev.x = e.motion.x;
+            prev.y = e.motion.y;
+
+            clicked = true;
         }
         else if (e.type == SDL_MOUSEBUTTONUP)
         {
+            clicked = false;
+
+            if (size.x <= 8)
+            {
+                size.x = 8;
+            }
+
+            if (size.y <= 8)
+            {
+                size.y = 8;
+            }
+
             if (e.button.button == SDL_BUTTON_LEFT)
-                add_entity (mouse + camera, size, (BODY_TYPES)sprite_index);
+                add_entity (prev + camera, size, (BODY_TYPES)sprite_index);
             else if (e.button.button == SDL_BUTTON_RIGHT)
                 remove_entity (mouse + (size / 2));
         }
@@ -249,47 +263,69 @@ void editor_screen (SDL_Window *window, Shader shader, int *config)
         }
     }
 
-    float camera_speed = 200.f;
+    float inc = 100.f, camera_speed = 200.f;
 
-    float inc = 100.f;
+    Input *move_up         = 0;
+    Input *move_down       = 0;
+    Input *move_left       = 0;
+    Input *move_right      = 0;
+    Input *increase_size_w = 0;
+    Input *increase_size_h = 0;
+    Input *decrease_size_w = 0;
+    Input *decrease_size_h = 0;
+
+    FOR (Input, controller.inputs)
+    {
+        switch (i->action)
+        {
+            case MOVE_UP: move_up = i; break;
+            case MOVE_DOWN: move_down = i; break;
+            case MOVE_LEFT: move_left = i; break;
+            case MOVE_RIGHT: move_right = i; break;
+            case INCREASE_SIZE_W: increase_size_w = i; break;
+            case INCREASE_SIZE_H: increase_size_h = i; break;
+            case DECREASE_SIZE_W: decrease_size_w = i; break;
+            case DECREASE_SIZE_H: decrease_size_h = i; break;
+        }
+    }
 
     while (time_data::acumulator >= time_data::step)
     {
-        if (controller.state & MOVE_LEFT)
+        if (move_left)
             camera.x -= camera_speed * time_data::step;
-        if (controller.state & MOVE_RIGHT)
+        if (move_right)
             camera.x += camera_speed * time_data::step;
 
-        if (controller.state & MOVE_UP)
+        if (move_up)
             camera.y -= camera_speed * time_data::step;
-        if (controller.state & MOVE_DOWN)
+        if (move_down)
             camera.y += camera_speed * time_data::step;
 
-        if (controller.state & INCREASE_SIZE_W)
+        if (increase_size_w)
             size.x += inc * time_data::step;
-        else if (controller.state & DECREASE_SIZE_W && size.x > 2)
+        if (decrease_size_w && size.x > 2)
             size.x -= inc * time_data::step;
 
-        if (controller.state & INCREASE_SIZE_H)
+        if (increase_size_h)
             size.y += inc * time_data::step;
-        else if (controller.state & DECREASE_SIZE_H && size.y > 2)
+        if (decrease_size_h && size.y > 2)
             size.y -= inc * time_data::step;
 
         time_data::acumulator -= time_data::step;
     }
 
-    if (just_pressed (controller.inputs, HIDE_EDITOR, true))
+    if (active (controller.inputs, HIDE_EDITOR))
         *config &= ~VISIBLE_EDITOR;
 
-    if (controller.state & INCREASE_EDITOR)
+    if (find (controller.inputs, INCREASE_EDITOR))
     {
-        W++;
-        H++;
+        W += 2;
+        H += 2;
     }
-    else if (controller.state & DECREASE_EDITOR && W > 321)
+    else if (find (controller.inputs, DECREASE_EDITOR) && W > 322)
     {
-        W--;
-        H--;
+        W -= 2;
+        H -= 2;
     }
 
     glUseProgram (shader.id);
@@ -301,10 +337,16 @@ void editor_screen (SDL_Window *window, Shader shader, int *config)
     if (mouse.y >= H - 16)
         mouse.y = H - 16;
 
+    if (size.x <= 8)
+        size.x = 8;
+    if (size.y <= 8)
+        size.y = 8;
+
     show_collision_grid ();
-    push (&glows, { mouse, size, { 1.0f, 0.0f, 1.0f, 1.0f } });
+    push (&glows, { mouse, { 8, 8 }, { 1.0f, 0.0f, 1.0f, 1.0f } });
     draw (bodies, &controller, (*config & COLLISION_BOXES) ? true : false);
-    draw_grid (mouse, size, sprite_index);
+
+    draw_grid (prev, size, sprite_index);
 
     update (&controller);
 }
@@ -320,9 +362,9 @@ void playing_screen (SDL_Window *window, Shader shader, int *config)
         if (e.type == SDL_QUIT)
             run = false;
         else if (e.type == SDL_KEYDOWN && e.key.repeat == 0)
-            set (&controller, e.key.keysym.sym, KEYDOWN);
+            set (&controller, e.key.keysym.sym, SDL_KEYDOWN);
         else if (e.type == SDL_KEYUP)
-            unset (&controller, e.key.keysym.sym, KEYDOWN);
+            unset (&controller, e.key.keysym.sym, SDL_KEYDOWN);
     }
 
     while (time_data::acumulator >= time_data::step)
@@ -338,17 +380,26 @@ void playing_screen (SDL_Window *window, Shader shader, int *config)
 
     draw (bodies, &controller, (*config & COLLISION_BOXES) ? true : false);
 
-    if (just_pressed (controller.inputs, SHOW_EDITOR, true))
-        *config |= VISIBLE_EDITOR;
-
-    if (just_pressed (controller.inputs, TOGGLE_ASPECT_RATIO, true))
+    FOR (Input, controller.inputs)
     {
-        maintain_aspect_ratio = (maintain_aspect_ratio) ? false : true;
-        init_frame_buffer (window, true);
-    }
+        if (i->timer.state & (DONE | WAIT))
+            continue;
+        else if (i->action == SHOW_EDITOR)
+            *config |= VISIBLE_EDITOR;
+        else if (i->action == TOGGLE_ASPECT_RATIO)
+        {
+            if (*config & ASPECT_RATIO)
+                *config &= ~ASPECT_RATIO;
+            else
+                *config |= ASPECT_RATIO;
 
-    if (just_pressed (controller.inputs, TOGGLE_COLLISION_BOXES, true))
-        *config &= ~COLLISION_BOXES;
+            init_frame_buffer (window, true);
+        }
+        else if (i->action == TOGGLE_COLLISION_BOXES)
+        {
+            *config &= ~COLLISION_BOXES;
+        }
+    }
 
     update (&controller);
 }

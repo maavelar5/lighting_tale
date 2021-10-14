@@ -42,7 +42,7 @@ inline Cell *find (Grid *list, Cell cell)
     return push (list, cell);
 }
 
-void reset (Grid *list)
+inline void reset (Grid *list)
 {
     for (Cell *i = list->first; i != limit (*list); i = i->next)
         reset (&i->bodies);

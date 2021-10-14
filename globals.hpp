@@ -114,6 +114,9 @@
     inline void  reset (List *list) RESET;                 \
     inline Type *remove (List *list, Type *node) DELETE (Type);
 
+#define FOR(Type, List) \
+    for (Type *i = List.first; i != limit (List); i = i->next)
+
 typedef GLuint   uint;
 typedef SDL_Rect ivec4;
 

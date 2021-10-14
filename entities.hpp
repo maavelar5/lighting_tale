@@ -5,18 +5,6 @@
 #include "collision.hpp"
 #include "shader.hpp"
 
-enum PLAYING_ACTIONS
-{
-    PLAYER_JUMP  = 1,
-    PLAYER_LEFT  = 2,
-    PLAYER_RIGHT = 4,
-    PLAYER_DASH  = 8,
-
-    SHOW_EDITOR            = 16,
-    TOGGLE_ASPECT_RATIO    = 32,
-    TOGGLE_COLLISION_BOXES = 64,
-};
-
 void add_platform (vec2 pos, vec2 size)
 {
     Body b = get_body ();
@@ -75,7 +63,7 @@ void draw_fire (Body &b)
     push (&sprites, {
                         b.pos - camera,
                         b.size,
-                        update (*b.animation),
+                        update (b.animation),
                         0,
                         FLIP_X_FALSE,
                     });
@@ -99,32 +87,36 @@ void move_player (Body *b, Controller *controller)
 {
     b->prev_pos = b->pos;
 
-    if (just_pressed (controller->inputs, PLAYER_JUMP))
+    Input *left  = find (controller->inputs, PLAYER_LEFT);
+    Input *jump  = active (controller->inputs, PLAYER_JUMP);
+    Input *right = find (controller->inputs, PLAYER_RIGHT);
+
+    if (jump)
     {
         if (b->sensor & (LEFT | RIGHT) && !(b->sensor & BOT))
         {
-            just_pressed (controller->inputs, PLAYER_JUMP, true);
+            set (&jump->timer, DONE);
 
             b->vel.x = (b->vel.x > 0) ? -b->speed : b->speed;
             b->vel.y = -250.f;
         }
         else if (b->sensor & BOT)
         {
-            just_pressed (controller->inputs, PLAYER_JUMP, true);
+            set (&jump->timer, DONE);
             b->vel.y = -250.f;
         }
     }
 
-    if (controller->state & (PLAYER_LEFT | PLAYER_RIGHT))
+    if (left || right)
     {
-        if (controller->state & PLAYER_LEFT)
+        if (left)
         {
             b->accel.x = (b->vel.x > 0) ? -b->speed * 8 : -b->speed;
 
             if (b->vel.x < -b->speed)
                 b->accel.x = 0;
         }
-        else if (controller->state & PLAYER_RIGHT)
+        else if (right)
         {
             b->accel.x = (b->vel.x < 0) ? b->speed * 8 : b->speed;
 
@@ -155,9 +147,9 @@ void move_player (Body *b, Controller *controller)
 
         if (b->vel.y > 0)
         {
-            if (b->sensor & LEFT && controller->state & PLAYER_LEFT)
+            if (b->sensor & LEFT && left)
                 max_gravity /= 8.f;
-            else if (b->sensor & RIGHT && controller->state & PLAYER_RIGHT)
+            else if (b->sensor & RIGHT && right)
                 max_gravity /= 8.f;
         }
 
@@ -259,21 +251,24 @@ void draw_player (Body &b, Controller *controller)
     vec4       sprite;
     Animation *animation = 0;
 
-    if (controller->state & PLAYER_LEFT)
+    Input *left  = find (controller->inputs, PLAYER_LEFT);
+    Input *right = find (controller->inputs, PLAYER_RIGHT);
+
+    if (left)
         flip = FLIP_X_FALSE;
-    else if (controller->state & PLAYER_RIGHT)
+    else if (right)
         flip = FLIP_X_TRUE;
 
     if (b.sensor & (LEFT | RIGHT))
         animation = &hold;
     else if (!(b.sensor & BOT))
         animation = &jumping;
-    else if (controller->state & (PLAYER_LEFT | PLAYER_RIGHT))
+    else if (left || right)
         animation = &walking;
     else
         animation = &standing;
 
-    sprite = update (*animation);
+    sprite = update (animation);
 
     push (&glows, (Glow) { b.pos - camera, b.size, { 0.0f, 0.5f, .5f, 0.5f } });
     push (&sprites, (Sprite) { b.pos - camera, b.size, sprite, b.angle, flip });

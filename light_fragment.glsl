@@ -10,6 +10,7 @@ uniform sampler2D u_image;
 
 uniform float u_radius    = 0.05;
 uniform float u_intensity = 0.01;
+uniform bool  light_room  = true;
 
 struct Light
 {
@@ -30,5 +31,8 @@ void main ()
         color += vec4 (u_radius * (result / ((dist * dist) + u_intensity)), 1);
     }
 
-    // color += vec4 ((u_radius * (result / u_intensity)), 1);
+    if (light_room)
+    {
+        color += vec4 ((u_radius * (result / 0.011)), 1);
+    }
 }
