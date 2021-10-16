@@ -4,6 +4,7 @@
 #include "cell.hpp"
 #include "controller.hpp"
 #include "globals.hpp"
+#include "shader.hpp"
 #include "time_data.hpp"
 #include "timer.hpp"
 
@@ -13,7 +14,6 @@ enum BODY_TYPES
     ENEMY,
     PLAYER,
     PLATFORM,
-    MAX_TYPE,
 };
 
 enum BODY_CONFIG
@@ -26,8 +26,8 @@ struct aabb
 {
     float x, w, y, h;
 
-    static const int offset_x = 4;
-    static const int offset_y = 6;
+    static const int offset_x = 2;
+    static const int offset_y = 8;
 };
 
 struct Body
@@ -37,6 +37,8 @@ struct Body
     float speed, angle;
 
     BODY_TYPES type;
+
+    Light *    light;
     Animation *animation;
 
     NODE_PROPERTIES (Body);
@@ -74,6 +76,7 @@ Body get_body ()
 
     b.type = PLATFORM;
 
+    b.light     = 0;
     b.animation = 0;
 
     b.next = b.prev = 0;

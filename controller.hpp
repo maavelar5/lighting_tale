@@ -15,7 +15,7 @@ enum INPUT_TYPE
 
 enum ACTIONS
 {
-    PLAYER_JUMP,
+    PLAYER_JUMP = 1,
     PLAYER_LEFT,
     PLAYER_RIGHT,
     PLAYER_DASH,
@@ -26,17 +26,13 @@ enum ACTIONS
     MOVE_LEFT,
     MOVE_RIGHT,
 
-    INCREASE_H,
     INCREASE_W,
+    INCREASE_H,
+    DECREASE_W,
+    DECREASE_H,
 
     SHOW_EDITOR,
     HIDE_EDITOR,
-
-    INCREASE_SIZE_W,
-    INCREASE_SIZE_H,
-
-    DECREASE_SIZE_W,
-    DECREASE_SIZE_H,
 
     INCREASE_EDITOR,
     DECREASE_EDITOR,
@@ -52,7 +48,7 @@ enum ACTIONS
 
 struct Input
 {
-    uint  event, action, type;
+    uint  action;
     bool  active;
     Timer timer;
 
@@ -66,43 +62,24 @@ struct Inputs
 
 COMMON_FUNCTIONS (Input, Inputs)
 
-struct Controller
+bool active (Input *input)
 {
-    Inputs map, inputs;
-};
-
-Input *find (Inputs map, uint event, uint type)
-{
-    for (Input *i = map.first; i != limit (map); i = i->next)
-        if (i->event == event && i->type == type)
-            return i;
-
-    return 0;
+    if (!input)
+        return false;
+    else if (input->timer.state & START)
+        return true;
+    else
+        return false;
 }
 
-Input *find_by_event (Inputs map, uint event)
+bool finished (Input *input)
 {
-    for (Input *i = map.first; i != limit (map); i = i->next)
-        if (i->event == event)
-            return i;
-
-    return 0;
-}
-
-Input *find (Inputs map, uint action)
-{
-    for (Input *i = map.first; i != limit (map); i = i->next)
-        if (i->action == action)
-            return i;
-
-    return 0;
-}
-
-Input *active (Inputs inputs, uint action)
-{
-    Input *input = find (inputs, action);
-
-    return (input && input->timer.state & START) ? input : 0;
+    if (!input)
+        return false;
+    else if (input->timer.state & DONE)
+        return true;
+    else
+        return false;
 }
 
 void remove (Inputs *inputs, uint action)
@@ -114,38 +91,29 @@ void remove (Inputs *inputs, uint action)
             i = i->next;
 }
 
-void set (Controller *controller, uint event, uint type)
+void set_inactive (Inputs *inputs, uint action)
 {
-    Input *input = find_by_event (controller->map, event);
-
-    if (input)
-    {
-        input->active = true;
-        input->timer  = INPUT_TIMER (SIMPLE);
-
-        push (&controller->inputs, *input);
-    }
+    for (Input *i = inputs->first; i != limit (*inputs); i = i->next)
+        if (i->action == action)
+            i->active = false;
 }
 
-void unset (Controller *controller, uint event, uint type)
+void update (Inputs *inputs)
 {
-    Input *input = find (controller->inputs, event, type);
-
-    if (input)
-        input->active = false;
-}
-
-void update (Controller *controller)
-{
-    for (auto i = controller->inputs.first; i != limit (controller->inputs);)
+    for (auto i = inputs->first; i != limit (*inputs);)
     {
         update (&i->timer);
 
         if (!i->active && i->timer.state & DONE)
-            i = remove (&controller->inputs, i);
+            i = remove (inputs, i);
         else
             i = i->next;
     }
+}
+
+void push (Inputs *inputs, uint action, uint config = SIMPLE)
+{
+    push (inputs, { action, true, INPUT_TIMER (config) });
 }
 
 #endif

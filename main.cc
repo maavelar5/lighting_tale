@@ -2,6 +2,7 @@
 
 #include "collision.hpp"
 #include "entities.hpp"
+#include "font.xpm"
 #include "math_data.hpp"
 #include "shader.hpp"
 #include "spritesheet.xpm"
@@ -46,6 +47,7 @@ int main (int argc, char **argv)
     Shader  shader       = init_default_shader ();
     Shader  light_shader = init_lighting_shader ();
     Texture spritesheet  = load_xpm (spritesheet_xpm);
+    Texture font_texture = load_xpm (font_xpm);
 
     update_entities ();
 
@@ -64,7 +66,7 @@ int main (int argc, char **argv)
             case PLAYING_SCREEN: playing_screen (window, shader); break;
         }
 
-        batch_render (window, light_shader, shader, spritesheet);
+        batch_render (window, light_shader, shader, spritesheet, font_texture);
     }
 
     return 0;

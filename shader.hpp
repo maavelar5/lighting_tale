@@ -55,6 +55,14 @@ struct Glow
     NODE_PROPERTIES (Glow);
 };
 
+struct Text
+{
+    vec2 pos;
+    char string[512];
+
+    NODE_PROPERTIES (Text);
+};
+
 struct Lights
 {
     LIST_PROPERTIES (Light);
@@ -75,15 +83,22 @@ struct Sprites
     LIST_PROPERTIES (Sprite);
 };
 
+struct Texts
+{
+    LIST_PROPERTIES (Text);
+};
+
 COMMON_FUNCTIONS (Glow, Glows);
 COMMON_FUNCTIONS (Light, Lights);
 COMMON_FUNCTIONS (Square, Squares);
 COMMON_FUNCTIONS (Sprite, Sprites);
+COMMON_FUNCTIONS (Text, Texts);
 
 Glows   glows;
 Lights  lights;
 Squares squares;
 Sprites sprites;
+Texts   texts;
 
 void copy_to_array (Lights lights, vec2 *arr)
 {
@@ -336,10 +351,79 @@ inline void draw (Shader shader, Texture texture, Sprite sprite)
         set_uniform (shader, "u_flip_y", false);
 
     set_uniform (shader, "u_type", 0);
-    set_uniform (shader, "u_image", sprite.sprite);
     set_uniform (shader, "u_model", matrix);
 
     glDrawArrays (GL_TRIANGLES, 0, 6);
+}
+
+vec4 alphabet (const char i)
+{
+    switch (i)
+    {
+        case 'a': return { 0, 0, 8, 8 };
+        case 'b': return { 8, 0, 8, 8 };
+        case 'c': return { 16, 0, 8, 8 };
+        case 'd': return { 24, 0, 8, 8 };
+        case 'e': return { 32, 0, 8, 8 };
+        case 'f': return { 40, 0, 8, 8 };
+
+        case 'g': return { 48, 0, 8, 8 };
+        case 'h': return { 56, 0, 8, 8 };
+        case 'i': return { 64, 0, 8, 8 };
+        case 'j': return { 72, 0, 8, 8 };
+
+        case 'k': return { 0, 8, 8, 8 };
+        case 'l': return { 8, 8, 8, 8 };
+        case 'm': return { 16, 8, 8, 8 };
+        case 'n': return { 24, 8, 8, 8 };
+        case 'o': return { 32, 8, 8, 8 };
+        case 'p': return { 40, 8, 8, 8 };
+        case 'q': return { 48, 8, 8, 8 };
+        case 'r': return { 56, 8, 8, 8 };
+        case 's': return { 64, 8, 8, 8 };
+        case 't': return { 72, 8, 8, 8 };
+
+        case 'u': return { 0, 16, 8, 8 };
+        case 'v': return { 8, 16, 8, 8 };
+        case 'w': return { 16, 16, 8, 8 };
+        case 'x': return { 24, 16, 8, 8 };
+        case 'y': return { 32, 16, 8, 8 };
+        case 'z': return { 40, 16, 8, 8 };
+        case ' ': return { 48, 16, 8, 8 };
+
+        case '0': return { 0, 32, 8, 8 };
+        case '1': return { 8, 32, 8, 8 };
+        case '2': return { 16, 32, 8, 8 };
+        case '3': return { 24, 32, 8, 8 };
+        case '4': return { 32, 32, 8, 8 };
+        case '5': return { 40, 32, 8, 8 };
+        case '6': return { 48, 32, 8, 8 };
+        case '7': return { 56, 32, 8, 8 };
+        case '8': return { 64, 32, 8, 8 };
+        case '9': return { 72, 32, 8, 8 };
+
+        default: return { 0, 0, 8, 8 };
+    }
+}
+
+inline void draw (Shader shader, Texture texture, Text text)
+{
+    set_uniform (shader, "u_flip_x", true);
+    set_uniform (shader, "u_flip_y", true);
+
+    set_uniform (shader, "u_type", 0);
+
+    for (size_t i = 0; i < strlen (text.string); i++)
+    {
+        mat4 matrix = get_model (text.pos, { 8.f, 8.f }, 0);
+
+        set_sprite (shader, texture, alphabet (text.string[i]));
+        set_uniform (shader, "u_model", matrix);
+
+        glDrawArrays (GL_TRIANGLES, 0, 6);
+
+        text.pos.x += 6;
+    }
 }
 
 inline void draw (Shader shader, Glow glow)
@@ -410,7 +494,8 @@ void init_frame_buffer (SDL_Window *window, bool erase = false)
 }
 
 void batch_render (SDL_Window *window, Shader light_shader,
-                   Shader sprite_shader, Texture spritesheet)
+                   Shader sprite_shader, Texture spritesheet,
+                   Texture font_texture)
 {
     int w, h, ratio;
 
@@ -485,11 +570,23 @@ void batch_render (SDL_Window *window, Shader light_shader,
     for (auto i = glows.first; i != limit (glows); i = i->next)
         draw (sprite_shader, *i);
 
+    glActiveTexture (GL_TEXTURE0);
+    glBindTexture (GL_TEXTURE_2D, font_texture.id);
+
+    glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    Text t;
+    strcpy (t.string, "marco wey que pedo");
+    t.pos = { 0, 0 };
+
+    draw (sprite_shader, font_texture, t);
+
     SDL_GL_SwapWindow (window);
 
     reset (&squares);
     reset (&sprites);
     reset (&glows);
+    reset (&texts);
 }
 
 #endif

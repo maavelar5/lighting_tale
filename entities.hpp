@@ -16,6 +16,21 @@ void add_platform (vec2 pos, vec2 size)
     push (&bodies, b);
 }
 
+void add_enemy (vec2 pos, vec2 size)
+{
+    Body b = get_body ();
+
+    b.pos  = pos;
+    b.size = size;
+    b.type = ENEMY;
+
+    b.config = COLLISION_SPACING;
+
+    b.vel = { 0.f, 300.f };
+
+    push (&bodies, b);
+}
+
 void add_fire (vec2 pos, vec2 size)
 {
     Body b = get_body ();
@@ -69,6 +84,20 @@ void draw_fire (Body &b)
                     });
 }
 
+void draw_enemy (Body &b)
+{
+    push (&glows, { b.pos - camera, b.size, { 1.f, 1.f, 0.0f, 1.f } });
+
+    push (&sprites, {
+                        b.pos - camera,
+                        b.size,
+                        { 0, 16, 16, 16 },
+                        0,
+                        // SDL_GetTicks () / 3.f,
+                        FLIP_X_FALSE,
+                    });
+}
+
 Body *add_player (vec2 pos, vec2 size)
 {
     Body b = get_body ();
@@ -83,15 +112,58 @@ Body *add_player (vec2 pos, vec2 size)
     return push (&bodies, b);
 }
 
-void move_player (Body *b, Controller *controller)
+void move_enemy (Body *b)
+{
+    float speed = 50.f;
+
+    if (b->sensor)
+    {
+        if (b->sensor & TOP)
+        {
+            b->vel.y = speed;
+        }
+        if (b->sensor & BOT)
+        {
+            b->vel.y = -speed;
+        }
+        if (b->sensor & LEFT)
+        {
+            b->vel.x = speed;
+        }
+        if (b->sensor & RIGHT)
+        {
+            b->vel.x = -speed;
+        }
+    }
+
+    b->vel.y += ((gravity / 8) * time_data::step);
+
+    b->pos += (b->vel * time_data::step);
+
+    b->sensor = NONE;
+
+    push (&grid, b);
+}
+
+void move_player (Body *b, Inputs *inputs)
 {
     b->prev_pos = b->pos;
 
-    Input *left  = find (controller->inputs, PLAYER_LEFT);
-    Input *jump  = active (controller->inputs, PLAYER_JUMP);
-    Input *right = find (controller->inputs, PLAYER_RIGHT);
+    Input *left  = 0;
+    Input *jump  = 0;
+    Input *right = 0;
 
-    if (jump)
+    for (Input *i = inputs->first; i != limit (*inputs); i = i->next)
+    {
+        switch (i->action)
+        {
+            case PLAYER_JUMP: jump = i; break;
+            case PLAYER_LEFT: left = i; break;
+            case PLAYER_RIGHT: right = i; break;
+        }
+    }
+
+    if (active (jump))
     {
         if (b->sensor & (LEFT | RIGHT) && !(b->sensor & BOT))
         {
@@ -191,7 +263,7 @@ void move_player (Body *b, Controller *controller)
     push (&grid, b);
 }
 
-void draw_player (Body &b, Controller *controller)
+void draw_player (Body &b, Inputs *inputs)
 {
     static vec4 standing_coords[] = {
         { 0, 0, 16, 16 },
@@ -251,8 +323,17 @@ void draw_player (Body &b, Controller *controller)
     vec4       sprite;
     Animation *animation = 0;
 
-    Input *left  = find (controller->inputs, PLAYER_LEFT);
-    Input *right = find (controller->inputs, PLAYER_RIGHT);
+    Input *left  = 0;
+    Input *right = 0;
+
+    for (Input *i = inputs->first; i != limit (*inputs); i = i->next)
+    {
+        switch (i->action)
+        {
+            case PLAYER_LEFT: left = i; break;
+            case PLAYER_RIGHT: right = i; break;
+        }
+    }
 
     if (left)
         flip = FLIP_X_FALSE;

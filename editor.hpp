@@ -105,6 +105,7 @@ inline void update_entities ()
                 case FIRE: add_fire (e->pos, e->size); break;
                 case PLAYER: add_player (e->pos, e->size); break;
                 case PLATFORM: add_platform (e->pos, e->size); break;
+                case ENEMY: add_enemy (e->pos, e->size); break;
                 default: break;
             }
         }

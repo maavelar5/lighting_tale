@@ -36,24 +36,32 @@ void collision_spacing (Body *first, aabb a, aabb c)
 {
     if (top (a, c) && first->vel.y < 0)
     {
-        first->pos.y += ((c.h - c.y));
+        if (!(first->sensor & BOT))
+            first->pos.y += ((c.h - c.y));
+
         first->vel.y = 0;
         first->sensor |= TOP;
     }
     else if (bot (a, c) && first->vel.y >= 0)
     {
-        first->pos.y -= ((c.h - c.y) - 1);
+        if (!(first->sensor & TOP))
+            first->pos.y -= ((c.h - c.y) - 1);
+
         first->vel.y = 0;
         first->sensor |= BOT;
     }
     else if (left (a, c))
     {
-        first->pos.x += ((c.w - c.x));
+        if (!(first->sensor & RIGHT))
+            first->pos.x += ((c.w - c.x));
+
         first->sensor |= LEFT;
     }
     else if (right (a, c))
     {
-        first->pos.x -= ((c.w - c.x));
+        if (!(first->sensor & LEFT))
+            first->pos.x -= ((c.w - c.x));
+
         first->sensor |= RIGHT;
     }
 }
@@ -75,8 +83,8 @@ aabb generate_aabb (Body *a)
 
         case ENEMY:
             data = {
-                a->pos.x + 5.f,
-                a->pos.x + (a->size.x - 4.f),
+                a->pos.x + 2,
+                a->pos.x + (a->size.x - 2),
                 a->pos.y,
                 a->pos.y + (a->size.y),
             };
@@ -96,27 +104,13 @@ aabb generate_aabb (Body *a)
     return data;
 }
 
-void solve (Body *first, Body *second)
+void solve_by_type (Body *body, aabb a, aabb c)
 {
-    aabb a = generate_aabb (first);
-    aabb b = generate_aabb (second);
-
-    if (a.x < b.w && a.w > b.x && a.y < b.h && a.h > b.y)
+    switch (body->type)
     {
-        aabb c = {
-            (a.x >= b.x) ? a.x : b.x,
-            (a.w <= b.w) ? a.w : b.w,
-            (a.y >= b.y) ? a.y : b.y,
-            (a.h <= b.h) ? a.h : b.h,
-        };
-
-        switch (first->type)
-        {
-            case ENEMY: break;
-            case PLAYER: collision_spacing (first, a, c); break;
-            case PLATFORM: collision_spacing (second, b, c); break;
-            default: break;
-        }
+        case ENEMY: collision_spacing (body, a, c); break;
+        case PLAYER: collision_spacing (body, a, c); break;
+        default: break;
     }
 }
 
@@ -127,24 +121,39 @@ void check ()
         if (cell->bodies.length <= 1)
             continue;
 
-        BodyPTRS *bodies = &cell->bodies;
-
-        BodyPTR *cond       = limit (*bodies);
-        BodyPTR *inner_cond = 0;
+        BodyPTRS *bodies     = &cell->bodies;
+        BodyPTR * cond       = limit (*bodies);
+        BodyPTR * inner_cond = 0;
 
         if (!cond)
             cond = bodies->last;
 
         for (BodyPTR *i = bodies->first; i != cond; i = i->next)
         {
-            inner_cond = cond->next;
+            aabb a = generate_aabb (i->body);
+
+            if (cond)
+                inner_cond = cond->next;
 
             for (BodyPTR *j = i->next; j != inner_cond; j = j->next)
             {
                 if (i->body->type == PLATFORM && j->body->type == PLATFORM)
                     continue;
 
-                solve (i->body, j->body);
+                aabb b = generate_aabb (j->body);
+
+                if (a.x < b.w && a.w > b.x && a.y < b.h && a.h > b.y)
+                {
+                    aabb c = {
+                        (a.x >= b.x) ? a.x : b.x,
+                        (a.w <= b.w) ? a.w : b.w,
+                        (a.y >= b.y) ? a.y : b.y,
+                        (a.h <= b.h) ? a.h : b.h,
+                    };
+
+                    solve_by_type (i->body, a, c);
+                    solve_by_type (j->body, b, c);
+                }
             }
         }
     }

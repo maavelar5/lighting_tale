@@ -33,6 +33,6 @@ void main ()
 
     if (light_room)
     {
-        color += vec4 ((u_radius * (result / 0.011)), 1);
+        color += vec4 ((u_radius * (result / 0.090)), 1);
     }
 }
