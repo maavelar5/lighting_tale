@@ -35,6 +35,7 @@ struct Sprite
     vec4  sprite;
     float angle;
     uint  flip;
+    float alpha;
 
     NODE_PROPERTIES (Sprite);
 };
@@ -350,6 +351,8 @@ inline void draw (Shader shader, Texture texture, Sprite sprite)
     else if (sprite.flip & FLIP_Y_FALSE)
         set_uniform (shader, "u_flip_y", false);
 
+    set_uniform (shader, "u_alpha", sprite.alpha);
+
     set_uniform (shader, "u_type", 0);
     set_uniform (shader, "u_model", matrix);
 
@@ -587,6 +590,7 @@ void batch_render (SDL_Window *window, Shader light_shader,
     reset (&sprites);
     reset (&glows);
     reset (&texts);
+    reset (&lights);
 }
 
 #endif

@@ -5,7 +5,7 @@
 #include "collision.hpp"
 #include "shader.hpp"
 
-void add_platform (vec2 pos, vec2 size)
+inline void add_platform (vec2 pos, vec2 size)
 {
     Body b = get_body ();
 
@@ -16,7 +16,7 @@ void add_platform (vec2 pos, vec2 size)
     push (&bodies, b);
 }
 
-void add_enemy (vec2 pos, vec2 size)
+inline void add_enemy (vec2 pos, vec2 size)
 {
     Body b = get_body ();
 
@@ -24,14 +24,12 @@ void add_enemy (vec2 pos, vec2 size)
     b.size = size;
     b.type = ENEMY;
 
-    b.config = COLLISION_SPACING;
-
     b.vel = { 0.f, 300.f };
 
     push (&bodies, b);
 }
 
-void add_fire (vec2 pos, vec2 size)
+inline void add_fire (vec2 pos, vec2 size)
 {
     Body b = get_body ();
 
@@ -53,11 +51,10 @@ void add_fire (vec2 pos, vec2 size)
         fire_coords,
     };
 
-    push (&lights, (Light) { b.pos, b.size, true });
     push (&bodies, b);
 }
 
-void draw_platform (Body &b)
+inline void draw_platform (Body &b)
 {
     Sprite sprite;
 
@@ -72,49 +69,60 @@ void draw_platform (Body &b)
           (Square) { sprite.pos, sprite.size, { 0, .5, .5, 0.2 }, 0, 0 });
 }
 
-void draw_fire (Body &b)
+inline void draw_fire (Body &b)
 {
     push (&glows, { b.pos - camera, b.size, { 1.f, .5f, 0, 0.5f } });
+    push (&lights, { b.pos, b.size, true });
+
     push (&sprites, {
                         b.pos - camera,
                         b.size,
                         update (b.animation),
                         0,
                         FLIP_X_FALSE,
+                        1,
                     });
 }
 
-void draw_enemy (Body &b)
+inline void draw_enemy (Body &b)
 {
-    push (&glows, { b.pos - camera, b.size, { 1.f, 1.f, 0.0f, 1.f } });
+    // push (&glows, { b.pos - camera, b.size, { 1.f, 1.f, 0.0f } });
 
-    push (&sprites, {
-                        b.pos - camera,
-                        b.size,
-                        { 0, 16, 16, 16 },
-                        0,
-                        // SDL_GetTicks () / 3.f,
-                        FLIP_X_FALSE,
-                    });
+    push (&sprites, { b.pos - camera,
+                      b.size,
+                      { 0.f, 16.f, 16.f, 16.f },
+                      SDL_GetTicks () / 3.f,
+                      FLIP_X_FALSE,
+                      1 });
 }
 
-Body *add_player (vec2 pos, vec2 size)
+inline void add_player (vec2 pos, vec2 size)
 {
     Body b = get_body ();
 
-    b.pos    = pos;
-    b.size   = size;
-    b.type   = PLAYER;
-    b.config = COLLISION_SPACING;
-    b.speed  = 200.f;
-    b.accel  = { 0, 0 };
+    b.pos   = pos;
+    b.size  = size;
+    b.type  = PLAYER;
+    b.speed = 200.f;
+    b.accel = { 0, 0 };
 
-    return push (&bodies, b);
+    Body *player = push (&bodies, b);
+
+    player->player = (Player *)malloc (sizeof (Player));
+
+    player->player->flip        = NONE;
+    player->player->sword_delay = { TWO_WAY, 200, 250, 0, DONE };
+
+    b.type = PLAYER_SWORD;
+    b.size = { 8.f, 16.f };
+    b.pos  = b.pos;
+
+    player->player->sword = push (&bodies, b);
 }
 
-void move_enemy (Body *b)
+inline void move_enemy (Body *b)
 {
-    float speed = 50.f;
+    float speed = 250.f;
 
     if (b->sensor)
     {
@@ -145,13 +153,16 @@ void move_enemy (Body *b)
     push (&grid, b);
 }
 
-void move_player (Body *b, Inputs *inputs)
+inline void move_player (Body *b, Inputs *inputs)
 {
     b->prev_pos = b->pos;
 
-    Input *left  = 0;
-    Input *jump  = 0;
-    Input *right = 0;
+    Input *left   = 0;
+    Input *jump   = 0;
+    Input *right  = 0;
+    Input *attack = 0;
+
+    Body *sword = b->player->sword;
 
     for (Input *i = inputs->first; i != limit (*inputs); i = i->next)
     {
@@ -160,6 +171,7 @@ void move_player (Body *b, Inputs *inputs)
             case PLAYER_JUMP: jump = i; break;
             case PLAYER_LEFT: left = i; break;
             case PLAYER_RIGHT: right = i; break;
+            case PLAYER_ATTACK: attack = i; break;
         }
     }
 
@@ -242,7 +254,7 @@ void move_player (Body *b, Inputs *inputs)
         camera.x -= fabs (b->pos.x - b->prev_pos.x);
     }
 
-    if (b->vel.y > 0 && b->pos.y - camera.y > ((H / 3) * 2.3)
+    if (b->vel.y > 0 && b->pos.y - camera.y > ((H / 3) * 2)
         && !(b->sensor & BOT))
     {
         camera.y += fabs (b->pos.y - b->prev_pos.y);
@@ -260,10 +272,34 @@ void move_player (Body *b, Inputs *inputs)
 
     b->sensor = NONE;
 
+    sword->pos = b->pos;
+
+    if (active (attack) && b->player->sword_delay.state & (DONE))
+        set (&b->player->sword_delay, START | JUST_STARTED);
+
+    if (b->player->sword_delay.state & START)
+        sword->size = { 24.f, 32.f };
+    else
+        sword->size = { 8.f, 16.f };
+
+    sword->pos.y -= (sword->size.y - b->size.y) / 2.f;
+
+    if (b->player->flip == FLIP_X_TRUE)
+        sword->pos.x += b->size.x;
+    else
+        sword->pos.x -= sword->size.x;
+
     push (&grid, b);
+
+    if (b->player->sword_delay.state & START)
+    {
+        push (&grid, b->player->sword);
+    }
+
+    update (&b->player->sword_delay);
 }
 
-void draw_player (Body &b, Inputs *inputs)
+inline void draw_player (Body &b, Inputs *inputs)
 {
     static vec4 standing_coords[] = {
         { 0, 0, 16, 16 },
@@ -282,6 +318,13 @@ void draw_player (Body &b, Inputs *inputs)
         { 48, 0, 16, 16 },
         { 64, 0, 16, 16 },
         { 80, 0, 16, 16 },
+    };
+
+    static vec4 sword_coords[] = {
+        { 16, 80, 16, 16 },
+        { 16, 80, 16, 16 },
+        { 32, 80, 16, 16 },
+        { 48, 80, 16, 16 },
     };
 
     static Animation walking = {
@@ -313,12 +356,14 @@ void draw_player (Body &b, Inputs *inputs)
         hold_coords,
     };
 
-    static Light *light = push (&lights, { b.pos, b.size, true });
+    static Animation sword = {
+        0,
+        4,
+        { SIMPLE | LOOP, 75, 0, 0, 0 },
+        sword_coords,
+    };
 
-    light->pos  = b.pos;
-    light->size = b.size;
-
-    static uint flip = NONE;
+    uint *flip = &b.player->flip;
 
     vec4       sprite;
     Animation *animation = 0;
@@ -336,9 +381,9 @@ void draw_player (Body &b, Inputs *inputs)
     }
 
     if (left)
-        flip = FLIP_X_FALSE;
+        *flip = FLIP_X_FALSE;
     else if (right)
-        flip = FLIP_X_TRUE;
+        *flip = FLIP_X_TRUE;
 
     if (b.sensor & (LEFT | RIGHT))
         animation = &hold;
@@ -351,8 +396,58 @@ void draw_player (Body &b, Inputs *inputs)
 
     sprite = update (animation);
 
-    push (&glows, (Glow) { b.pos - camera, b.size, { 0.0f, 0.5f, .5f, 0.5f } });
-    push (&sprites, (Sprite) { b.pos - camera, b.size, sprite, b.angle, flip });
+    push (&glows, { b.pos - camera, b.size, { 0.0f, 0.5f, .5f, 0.5f } });
+    push (&sprites, { b.pos - camera, b.size, sprite, b.angle, *flip, 1 });
+    push (&lights, { b.pos, b.size, true });
+
+    float angle             = sin (SDL_GetTicks () / 250.f) * 25.f;
+    float sword_swing_alpha = 1;
+
+    if (b.player->sword_delay.state & START)
+    {
+        angle = 20.f;
+
+        float wind_angle = 90;
+        sword_swing_alpha
+            = (SDL_GetTicks () - b.player->sword_delay.current) / 100.f;
+
+        angle -= (SDL_GetTicks () - b.player->sword_delay.current);
+
+        if (*flip & FLIP_X_FALSE)
+            wind_angle = -90;
+
+        push (&sprites,
+              { b.player->sword->pos - camera, b.player->sword->size,
+                update (&sword), wind_angle, *flip, sword_swing_alpha });
+    }
+    else
+    {
+        sword.current = 0;
+
+        push (&sprites, { b.player->sword->pos - camera,
+                          { 8, 16 },
+                          { 0, 80, 16, 16 },
+                          angle,
+                          *flip,
+                          1 });
+    }
+}
+
+inline void add_mouse (vec2 pos)
+{
+    Body b = get_body ();
+
+    b.type = MOUSE;
+
+    b.pos  = pos;
+    b.size = { 16.f, 16.f };
+
+    push (&lights, { b.pos, b.size, false });
+    push (&bodies, b);
+}
+
+inline void draw_mouse (Body *b)
+{
 }
 
 #endif

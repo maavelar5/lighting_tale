@@ -16,7 +16,7 @@ uniform vec4 u_color = vec4 (0, 0, 0, 1);
 uniform float u_radius    = 0.15;    //   = 0.2;
 uniform float u_intensity = 0.01;    //= 0.07;
 
-uniform float u_alpha = 0.5;
+uniform float u_alpha = 1.0;
 
 void main ()
 {
@@ -34,7 +34,7 @@ void main ()
             t.y = 1.0f - t.y;
         }
 
-        color = texture (u_image, t * u_offset.zw + u_offset.xy);
+        color = texture (u_image, t * u_offset.zw + u_offset.xy) * u_alpha;
     }
     else if (u_type == 1)
     {

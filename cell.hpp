@@ -30,8 +30,8 @@ struct Grid
 
 COMMON_FUNCTIONS (BodyPTR, BodyPTRS);
 
-Cell *push (Grid *list, Cell data) PUSH (Cell);
-Cell *limit (Grid list) LIMIT;
+inline Cell *push (Grid *list, Cell data) PUSH (Cell);
+inline Cell *limit (Grid list) LIMIT;
 
 inline Cell *find (Grid *list, Cell cell)
 {

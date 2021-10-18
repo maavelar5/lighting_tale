@@ -90,7 +90,7 @@ aabb generate_aabb (Body *a)
             };
             break;
 
-        case PLATFORM:
+        default:
             data = {
                 a->pos.x,
                 a->pos.x + a->size.x,
@@ -98,18 +98,20 @@ aabb generate_aabb (Body *a)
                 a->pos.y + (a->size.y),
             };
             break;
-        default: data = { 0, 0, 0, 0 }; break;
     }
 
     return data;
 }
 
-void solve_by_type (Body *body, aabb a, aabb c)
+void solve_by_type (Body *first, Body *second, aabb a, aabb c)
 {
-    switch (body->type)
+    switch (first->type)
     {
-        case ENEMY: collision_spacing (body, a, c); break;
-        case PLAYER: collision_spacing (body, a, c); break;
+        case ENEMY: collision_spacing (first, a, c); break;
+        case PLAYER:
+            if (second->type != PLAYER_SWORD)
+                collision_spacing (first, a, c);
+            break;
         default: break;
     }
 }
@@ -151,8 +153,8 @@ void check ()
                         (a.h <= b.h) ? a.h : b.h,
                     };
 
-                    solve_by_type (i->body, a, c);
-                    solve_by_type (j->body, b, c);
+                    solve_by_type (i->body, j->body, a, c);
+                    solve_by_type (j->body, i->body, b, c);
                 }
             }
         }

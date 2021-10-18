@@ -10,7 +10,7 @@ struct Texture
     SDL_Surface *surface;
 };
 
-static Texture load_xpm (const char *data[])
+static Texture load_xpm (char *data[])
 {
     uint         w, h, id;
     SDL_Surface *regsurface = IMG_ReadXPMFromArray ((char **)data);

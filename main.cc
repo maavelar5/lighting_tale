@@ -2,10 +2,9 @@
 
 #include "collision.hpp"
 #include "entities.hpp"
-#include "font.xpm"
 #include "math_data.hpp"
 #include "shader.hpp"
-#include "spritesheet.xpm"
+
 #include "texture.hpp"
 #include "time_data.hpp"
 #include "utils.hpp"
@@ -14,6 +13,9 @@
 
 #include "editor.hpp"
 #include "playing_screen.hpp"
+
+#include "font.xpm"
+#include "spritesheet.xpm"
 
 enum SCREENS
 {

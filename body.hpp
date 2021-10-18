@@ -14,6 +14,11 @@ enum BODY_TYPES
     ENEMY,
     PLAYER,
     PLATFORM,
+    PLAYER_SWORD,
+
+    MOUSE,
+
+    MAX_BODY_TYPE,
 };
 
 enum BODY_CONFIG
@@ -30,18 +35,37 @@ struct aabb
     static const int offset_y = 8;
 };
 
+struct Player;
+struct Enemy;
+struct Platform;
+struct Damagable;
+
 struct Body
 {
-    uint  sensor, config;
+    uint  sensor;
     vec2  pos, prev_pos, size, vel, accel;
     float speed, angle;
 
+    Player *   player;
+    Damagable *damagable;
+    Animation *animation;
     BODY_TYPES type;
 
-    Light *    light;
-    Animation *animation;
-
     NODE_PROPERTIES (Body);
+};
+
+struct Player
+{
+    uint       flip;
+    Body *     sword;
+    Timer      sword_delay;
+    Animation *animation;
+};
+
+struct Damagable
+{
+    int   hp, current_hp;
+    Timer hit_recovery;
 };
 
 const int GRID_SIZE = 100;
@@ -71,12 +95,12 @@ Body get_body ()
     Body b;
 
     b.speed = b.angle = 0;
-    b.sensor = b.config = NONE;
+    b.sensor          = NONE;
     b.prev_pos = b.accel = b.pos = b.size = b.vel = { 0.f, 0.f };
 
     b.type = PLATFORM;
 
-    b.light     = 0;
+    b.player    = 0;
     b.animation = 0;
 
     b.next = b.prev = 0;
@@ -91,6 +115,6 @@ struct Bodies
 
 COMMON_FUNCTIONS (Body, Bodies)
 
-Bodies bodies;
+static Bodies bodies;
 
 #endif
