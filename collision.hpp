@@ -4,50 +4,54 @@
 #include "body.hpp"
 #include "globals.hpp"
 
-bool left (aabb a, aabb b)
+bool left (AABB a, AABB b)
 {
-    float dw = a.x + (((a.w - a.x) / 10) * aabb::offset_x);
+    float dw = a.x + (((a.w - a.x) / 10) * AABB::offset_x);
 
     return (b.x >= a.x && b.w <= dw && b.y >= a.y && b.h <= a.h) ? true : false;
 }
 
-bool right (aabb a, aabb b)
+bool right (AABB a, AABB b)
 {
-    float dx = a.x + (((a.w - a.x) / 10) * aabb::offset_y);
+    float dx = a.x + (((a.w - a.x) / 10) * AABB::offset_y);
 
     return (b.x >= dx && b.w <= a.w && b.y >= a.y && b.h <= a.h) ? true : false;
 }
 
-bool top (aabb a, aabb b)
+bool top (AABB a, AABB b)
 {
-    float dh = a.y + (((a.h - a.y) / 10) * aabb::offset_x);
+    float dh = a.y + (((a.h - a.y) / 10) * AABB::offset_x);
 
     return (b.x >= a.x && b.w <= a.w && b.y >= a.y && b.h <= dh) ? true : false;
 }
 
-bool bot (aabb a, aabb b)
+bool bot (AABB a, AABB b)
 {
-    float dy = a.y + (((a.h - a.y) / 10) * aabb::offset_y);
+    float dy = a.y + (((a.h - a.y) / 10) * AABB::offset_y);
 
     return (b.x >= a.x && b.w <= a.w && b.y >= dy && b.h <= a.h) ? true : false;
 }
 
-void collision_spacing (Body *first, aabb a, aabb c)
+void collision_spacing (Body *first, AABB a, AABB b, AABB c)
 {
-    if (top (a, c) && first->vel.y < 0)
+    if (top (a, c))
     {
-        if (!(first->sensor & BOT))
+        if (first->vel.y < 0 && !(first->sensor & BOT))
+        {
             first->pos.y += ((c.h - c.y));
+            first->vel.y = 0;
+        }
 
-        first->vel.y = 0;
         first->sensor |= TOP;
     }
-    else if (bot (a, c) && first->vel.y >= 0)
+    else if (bot (a, c))
     {
-        if (!(first->sensor & TOP))
+        if (first->vel.y >= 0 && !(first->sensor & TOP))
+        {
             first->pos.y -= ((c.h - c.y) - 1);
+            first->vel.y = 0;
+        }
 
-        first->vel.y = 0;
         first->sensor |= BOT;
     }
     else if (left (a, c))
@@ -64,17 +68,31 @@ void collision_spacing (Body *first, aabb a, aabb c)
 
         first->sensor |= RIGHT;
     }
+    else
+    {
+        // first->pos = first->prev_pos;
+
+        if (a.x > b.x)
+            first->sensor |= LEFT;
+        else
+            first->sensor |= RIGHT;
+
+        if (a.y > b.y)
+            first->sensor |= TOP;
+        else
+            first->sensor |= BOT;
+    }
 }
 
-aabb generate_aabb (Body *a)
+AABB generate_aabb (Body *a)
 {
-    aabb data;
+    AABB data;
 
     switch (a->type)
     {
         case PLAYER:
             data = {
-                a->pos.x + 5.f,
+                a->pos.x + 4.f,
                 a->pos.x + (a->size.x - 4.f),
                 a->pos.y,
                 a->pos.y + (a->size.y),
@@ -89,7 +107,14 @@ aabb generate_aabb (Body *a)
                 a->pos.y + (a->size.y),
             };
             break;
-
+        case PLAYER_SWORD:
+            data = {
+                a->pos.x,
+                a->pos.x + (a->size.x),
+                a->pos.y,
+                a->pos.y + (a->size.y),
+            };
+            break;
         default:
             data = {
                 a->pos.x,
@@ -100,17 +125,62 @@ aabb generate_aabb (Body *a)
             break;
     }
 
+    data.size = { data.w - data.x, data.h - data.y };
+
     return data;
 }
 
-void solve_by_type (Body *first, Body *second, aabb a, aabb c)
+void solve_by_type (Body *first, Body *second, AABB a, AABB b, AABB c)
 {
     switch (first->type)
     {
-        case ENEMY: collision_spacing (first, a, c); break;
+        case ENEMY:
+            collision_spacing (first, a, b, c);
+
+            if (second->type == PLAYER_SWORD
+                && first->damageable->hit_recovery.state & DONE)
+            {
+                first->speed = 150.f;
+                first->damageable->hp -= 1;
+
+                if (first->damageable->hp <= 0)
+                    first->state = REMOVE;
+
+                set (&first->damageable->hit_recovery, START | JUST_STARTED);
+            }
+            break;
+        case PLAYER_SWORD:
+            if (second->type == ENEMY
+                && second->damageable->hit_recovery.state & DONE)
+            {
+                if (first->player->sword_direction & BOT)
+                    first->player->body->vel.y = -250;
+                else if (first->player->sword_direction & LEFT)
+                    first->player->body->vel.x = 100.f;
+                else if (first->player->sword_direction & RIGHT)
+                    first->player->body->vel.x = -100.f;
+            }
+            break;
         case PLAYER:
-            if (second->type != PLAYER_SWORD)
-                collision_spacing (first, a, c);
+            switch (second->type)
+            {
+                case PLATFORM: collision_spacing (first, a, b, c); break;
+                case ENEMY:
+                    if (first->damageable->hit_recovery.state & DONE)
+                    {
+                        if (first->pos.x < second->pos.x)
+                            first->vel.x = -100.f;
+                        else
+                            first->vel.x = 100.f;
+
+                        first->vel.y = -200.f;
+
+                        set (&first->damageable->hit_recovery,
+                             START | JUST_STARTED);
+                    }
+                    break;
+                default: break;
+            }
             break;
         default: break;
     }
@@ -132,7 +202,6 @@ void check ()
 
         for (BodyPTR *i = bodies->first; i != cond; i = i->next)
         {
-            aabb a = generate_aabb (i->body);
 
             if (cond)
                 inner_cond = cond->next;
@@ -142,19 +211,20 @@ void check ()
                 if (i->body->type == PLATFORM && j->body->type == PLATFORM)
                     continue;
 
-                aabb b = generate_aabb (j->body);
+                AABB a = generate_aabb (i->body);
+                AABB b = generate_aabb (j->body);
 
                 if (a.x < b.w && a.w > b.x && a.y < b.h && a.h > b.y)
                 {
-                    aabb c = {
+                    AABB c = {
                         (a.x >= b.x) ? a.x : b.x,
                         (a.w <= b.w) ? a.w : b.w,
                         (a.y >= b.y) ? a.y : b.y,
                         (a.h <= b.h) ? a.h : b.h,
                     };
 
-                    solve_by_type (i->body, j->body, a, c);
-                    solve_by_type (j->body, i->body, b, c);
+                    solve_by_type (i->body, j->body, a, b, c);
+                    solve_by_type (j->body, i->body, b, a, c);
                 }
             }
         }

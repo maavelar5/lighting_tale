@@ -13,8 +13,8 @@ uniform bool u_flip_y = true;
 uniform int  u_type  = 0;
 uniform vec4 u_color = vec4 (0, 0, 0, 1);
 
-uniform float u_radius    = 0.15;    //   = 0.2;
-uniform float u_intensity = 0.01;    //= 0.07;
+uniform float u_radius    = 0.15;
+uniform float u_intensity = 0.01;
 
 uniform float u_alpha = 1.0;
 

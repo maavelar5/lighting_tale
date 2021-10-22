@@ -12,4 +12,7 @@ PKG_CONFIG=$(CROSS)pkg-config
 SDL2_CONFIG=$(CROSS)sdl2-config
 
 all : main.cc
-	$(CC) -g -Wall -Wno-write-strings `$(SDL2_CONFIG) --cflags` `$(PKG_CONFIG) --cflags glew` `$(PKG_CONFIG) --cflags SDL2_image` main.cc `$(SDL2_CONFIG) --libs` `$(PKG_CONFIG) --libs SDL2_image` `$(PKG_CONFIG) --libs glew` -o lighting_tale.exe
+	$(CC) -Wall -Wno-write-strings -std=c++11 `$(SDL2_CONFIG) --cflags` `$(PKG_CONFIG) --cflags glew` `$(PKG_CONFIG) --cflags SDL2_image` `$(PKG_CONFIG) --cflags SDL2_mixer` main.cc `$(SDL2_CONFIG) --libs` `$(PKG_CONFIG) --libs SDL2_image` `$(PKG_CONFIG) --libs SDL2_mixer` `$(PKG_CONFIG) --libs glew` -o lighting_tale.exe
+
+shader : shaders_to_header.cc
+	$(CC) shaders_to_header.cc -o shaders_to_header.exe

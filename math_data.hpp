@@ -7,6 +7,8 @@ struct vec2
 {
     float x, y;
 
+    vec2 *next, *prev;
+
     vec2 operator+ (vec2 a)
     {
         return { x + a.x, y + a.y };

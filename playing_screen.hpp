@@ -33,7 +33,7 @@ void move (Bodies *bodies, Inputs *inputs)
 
 void draw_collision_boxes (Body b)
 {
-    aabb a = generate_aabb (&b);
+    AABB a = generate_aabb (&b);
 
     vec2 pos  = { a.x - camera.x, a.y - camera.y };
     vec2 size = { a.w - a.x, a.h - a.y };
@@ -75,8 +75,8 @@ void draw (Bodies bodies, Inputs *inputs, bool collision_boxes)
 {
     for (Body *n = bodies.first; n != limit (bodies); n = n->next)
     {
-        // if (collision_boxes)
-        draw_collision_boxes (*n);
+        if (collision_boxes)
+            draw_collision_boxes (*n);
 
         switch (n->type)
         {
@@ -114,15 +114,14 @@ void draw_grid (vec2 pos, vec2 size, int types)
     switch (types)
     {
         case FIRE: sprite = { 0, 32, 16, 16 }; break;
+        case ENEMY: sprite = { 0, 16, 16, 16 }; break;
         case PLAYER: sprite = { 0, 0, 16, 16 }; break;
         case PLATFORM: sprite = { 0, 64, 16, 16 }; break;
-        case ENEMY: sprite = { 0, 16, 16, 16 }; break;
         case PLAYER_SWORD: sprite = { 0, 80, 16, 16 }; break;
-        case MOUSE: sprite = { 0, 0, 16, 16 }; break;
-        default: sprite = { 0, 0, 0, 0 }; break;
+        default: sprite = { 0, 0, 16, 16 }; break;
     }
 
-    push (&sprites, { pos, size, sprite, 0, true });
+    push (&sprites, { pos, size, sprite, 0, 0, 1 });
     push (&squares, { pos, size, { 1, 1, 0, 1 }, 0, true });
 }
 
@@ -311,7 +310,8 @@ void editor_screen (SDL_Window *window, Shader shader, int *config)
         size.y = 8;
 
     show_collision_grid ();
-    push (&glows, { mouse, { 8, 8 }, { 1.0f, 0.0f, 1.0f, 1.0f } });
+
+    push (&glows, { mouse, size, { 0.5f, 0.0f, 0.5f, 0.0f } });
     draw (bodies, &inputs, (*config & COLLISION_BOXES) ? true : false);
 
     draw_grid (prev, size, sprite_index);
@@ -342,9 +342,11 @@ void playing_screen (SDL_Window *window, Shader shader, int *config)
             {
                 case SDLK_a: action = PLAYER_LEFT; break;
                 case SDLK_d: action = PLAYER_RIGHT; break;
-                case SDLK_SPACE: action = PLAYER_JUMP; break;
                 case SDLK_1: action = SHOW_EDITOR; break;
                 case SDLK_j: action = PLAYER_ATTACK; break;
+                case SDLK_s: action = PLAYER_DOWN; break;
+                case SDLK_w: action = PLAYER_UP; break;
+                case SDLK_SPACE: action = PLAYER_JUMP; break;
             }
         }
 
@@ -381,7 +383,7 @@ void playing_screen (SDL_Window *window, Shader shader, int *config)
         time_data::acumulator -= time_data::step;
     }
 
-    show_collision_grid ();
+    // show_collision_grid ();
 
     draw (bodies, &inputs, (*config & COLLISION_BOXES) ? true : false);
 

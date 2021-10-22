@@ -4,7 +4,10 @@
 #include "globals.hpp"
 #include "math_data.hpp"
 #include "texture.hpp"
+#include "time_data.hpp"
 #include "utils.hpp"
+
+#include "shader_release.hpp"
 
 enum FLIP
 {
@@ -193,6 +196,78 @@ inline Shader create (const char *vertex_file, const char *fragment_file)
     return shader;
 }
 
+inline uint compile_from_src (const char *src, GLenum type)
+{
+    uint id = glCreateShader (type);
+
+    glShaderSource (id, 1, &src, NULL);
+    glCompileShader (id);
+
+    GLint isCompiled = 0;
+    glGetShaderiv (id, GL_COMPILE_STATUS, &isCompiled);
+    if (isCompiled == GL_FALSE)
+    {
+        GLint maxLength = 0;
+        glGetShaderiv (id, GL_INFO_LOG_LENGTH, &maxLength);
+
+        // The maxLength includes the NULL character
+        char infoLog[512];
+        glGetShaderInfoLog (id, maxLength, &maxLength, &infoLog[0]);
+
+        // We don't need the shader anymore.
+        glDeleteShader (id);
+
+        // Use the infoLog as you see fit.
+
+        printf ("%s\n", infoLog);
+
+        // In this simple program, we'll just leave
+        assert (1 != 1);
+    }
+
+    return id;
+}
+
+inline Shader create_from_src (const char *vertex_src, const char *fragment_src)
+{
+    Shader shader = {
+        glCreateProgram (),
+        compile_from_src (vertex_src, GL_VERTEX_SHADER),
+        compile_from_src (fragment_src, GL_FRAGMENT_SHADER),
+    };
+
+    glAttachShader (shader.id, shader.vertex_id);
+    glAttachShader (shader.id, shader.fragment_id);
+    glLinkProgram (shader.id);
+
+    GLint isLinked = 0;
+    glGetProgramiv (shader.id, GL_LINK_STATUS, (int *)&isLinked);
+    if (isLinked == GL_FALSE)
+    {
+        GLint maxLength = 0;
+        glGetProgramiv (shader.id, GL_INFO_LOG_LENGTH, &maxLength);
+
+        // The maxLength includes the NULL character
+        char infoLog[512];
+        glGetProgramInfoLog (shader.id, maxLength, &maxLength, &infoLog[0]);
+
+        // We don't need the program anymore.
+        glDeleteProgram (shader.id);
+        // Don't leak shaders either.
+        glDeleteShader (shader.vertex_id);
+        glDeleteShader (shader.fragment_id);
+
+        // Use the infoLog as you see fit.
+
+        printf ("%s\n", infoLog);
+
+        // In this simple program, we'll just leave
+        assert (1 != 1);
+    }
+
+    return shader;
+}
+
 inline void set_uniform (Shader shader, const char *name, vec2 value)
 {
     float data[2] = { value.x, value.y };
@@ -267,7 +342,7 @@ inline Shader init_default_shader ()
 
     glUseProgram (shader.id);
     set_uniform (shader, "u_image", 0);
-    set_uniform (shader, "u_projection", ortho (W, W));
+    set_uniform (shader, "u_projection", ortho (W, H));
 
     return shader;
 }
@@ -285,6 +360,74 @@ inline Shader init_lighting_shader ()
     };
 
     Shader shader = create ("light_vertex.glsl", "light_fragment.glsl");
+
+    glGenVertexArrays (1, &shader.vao);
+    glGenBuffers (1, &shader.vbo);
+
+    glBindVertexArray (shader.vao);
+
+    glBindBuffer (GL_ARRAY_BUFFER, shader.vbo);
+    glBufferData (GL_ARRAY_BUFFER, sizeof (points), &points, GL_STATIC_DRAW);
+    glVertexAttribPointer (0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof (float),
+                           (void *)0);
+    glEnableVertexAttribArray (0);
+
+    glUseProgram (shader.id);
+
+    set_uniform (shader, "u_image", 0);
+    set_uniform (shader, "u_projection", ortho (W, W));
+    set_uniform (shader, "u_max_lights", 0);
+
+    glUseProgram (0);
+
+    return shader;
+}
+
+inline Shader init_default_shader_from_src ()
+{
+    const float points[] = {
+        0.0f, 1.0f,    //
+        1.0f, 0.0f,    //
+        0.0f, 0.0f,    //
+
+        0.0f, 1.0f,    //
+        1.0f, 1.0f,    //
+        1.0f, 0.0f,    //
+    };
+
+    Shader shader = create_from_src (vertex, fragment);
+
+    glGenVertexArrays (1, &shader.vao);
+    glGenBuffers (1, &shader.vbo);
+
+    glBindVertexArray (shader.vao);
+    glBindBuffer (GL_ARRAY_BUFFER, shader.vbo);
+
+    glVertexAttribPointer (0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray (0);
+
+    glBufferData (GL_ARRAY_BUFFER, sizeof (points), points, GL_STATIC_DRAW);
+
+    glUseProgram (shader.id);
+    set_uniform (shader, "u_image", 0);
+    set_uniform (shader, "u_projection", ortho (W, H));
+
+    return shader;
+}
+
+inline Shader init_lighting_shader_from_src ()
+{
+    float points[] = {
+        -1.0f, 1.0f,  0.0f, 1.0f,    //
+        -1.0f, -1.0f, 0.0f, 0.0f,    //
+        1.0f,  -1.0f, 1.0f, 0.0f,    //
+
+        -1.0f, 1.0f,  0.0f, 1.0f,    //
+        1.0f,  -1.0f, 1.0f, 0.0f,    //
+        1.0f,  1.0f,  1.0f, 1.0f,
+    };
+
+    Shader shader = create_from_src (light_vertex, light_fragment);
 
     glGenVertexArrays (1, &shader.vao);
     glGenBuffers (1, &shader.vbo);
@@ -392,7 +535,8 @@ vec4 alphabet (const char i)
         case 'x': return { 24, 16, 8, 8 };
         case 'y': return { 32, 16, 8, 8 };
         case 'z': return { 40, 16, 8, 8 };
-        case ' ': return { 48, 16, 8, 8 };
+        case '.': return { 48, 16, 8, 8 };
+        case ' ': return { 56, 16, 8, 8 };
 
         case '0': return { 0, 32, 8, 8 };
         case '1': return { 8, 32, 8, 8 };
@@ -579,7 +723,8 @@ void batch_render (SDL_Window *window, Shader light_shader,
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     Text t;
-    strcpy (t.string, "marco wey que pedo");
+    sprintf (t.string, "fps %.2f", time_data::fps);
+    // strcpy (t.string, "marco wey que pedo");
     t.pos = { 0, 0 };
 
     draw (sprite_shader, font_texture, t);

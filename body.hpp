@@ -16,61 +16,60 @@ enum BODY_TYPES
     PLATFORM,
     PLAYER_SWORD,
 
-    MOUSE,
-
     MAX_BODY_TYPE,
 };
 
-enum BODY_CONFIG
+enum BODY_STATE
 {
-    COLLISION_SPACING  = 1,
-    SHOW_COLLISION_BOX = 2,
+    IDLE   = 1,
+    ACTIVE = 2,
+    REMOVE = 3,
 };
 
-struct aabb
+struct AABB
 {
     float x, w, y, h;
+
+    vec2 size;
 
     static const int offset_x = 2;
     static const int offset_y = 8;
 };
 
-struct Player;
-struct Enemy;
-struct Platform;
-struct Damagable;
-
-struct Body
-{
-    uint  sensor;
-    vec2  pos, prev_pos, size, vel, accel;
-    float speed, angle;
-
-    Player *   player;
-    Damagable *damagable;
-    Animation *animation;
-    BODY_TYPES type;
-
-    NODE_PROPERTIES (Body);
-};
-
-struct Player
-{
-    uint       flip;
-    Body *     sword;
-    Timer      sword_delay;
-    Animation *animation;
-};
-
-struct Damagable
+struct Damageable
 {
     int   hp, current_hp;
     Timer hit_recovery;
 };
 
+struct Player
+{
+    int   power;
+    uint  flip, sword_direction;
+    Body *sword, *body;
+    Fade  sword_fade;
+    Timer sword_delay;
+};
+
+struct Body
+{
+    uint  sensor, state;
+    vec2  pos, prev_pos, size, vel, accel;
+    AABB  aabb;
+    float speed, max_speed, angle;
+
+    Player *    player;
+    Animation * animation;
+    Damageable *damageable;
+
+    BODY_TYPES type;
+
+    NODE_PROPERTIES (Body);
+};
+
 const int GRID_SIZE = 100;
 
-void push (Grid *grid, Body *body)
+inline void push (Grid *grid, Body *body)
 {
     ivec4 locator = {
         (int)body->pos.x / GRID_SIZE,
@@ -90,18 +89,20 @@ void push (Grid *grid, Body *body)
     }
 }
 
-Body get_body ()
+inline Body get_body ()
 {
     Body b;
 
-    b.speed = b.angle = 0;
-    b.sensor          = NONE;
+    b.state    = ACTIVE;
+    b.sensor   = NONE;
     b.prev_pos = b.accel = b.pos = b.size = b.vel = { 0.f, 0.f };
+    b.max_speed = b.speed = b.angle = 0;
 
     b.type = PLATFORM;
 
-    b.player    = 0;
-    b.animation = 0;
+    b.player     = 0;
+    b.animation  = 0;
+    b.damageable = 0;
 
     b.next = b.prev = 0;
 

@@ -4,6 +4,7 @@
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
+#include <SDL2/SDL_mixer.h>
 
 #include "math_data.hpp"
 
@@ -129,8 +130,8 @@ enum SENSORS
 
 struct Body;
 
-float W = 320.f;
-float H = 320.f;
+float W = 480.f;
+float H = 270.f;
 
 const int MAX_LIGHTS = 120;
 

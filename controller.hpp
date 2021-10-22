@@ -20,6 +20,8 @@ enum ACTIONS
     PLAYER_RIGHT,
     PLAYER_DASH,
     PLAYER_ATTACK,
+    PLAYER_DOWN,
+    PLAYER_UP,
 
     // Editor
     MOVE_UP,
