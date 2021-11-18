@@ -54,16 +54,9 @@ struct Input
     uint  action;
     bool  active;
     Timer timer;
-
-    NODE_PROPERTIES (Input);
 };
 
-struct Inputs
-{
-    LIST_PROPERTIES (Input)
-};
-
-COMMON_FUNCTIONS (Input, Inputs)
+typedef array<Input> Inputs;
 
 bool active (Input *input)
 {
@@ -85,38 +78,40 @@ bool finished (Input *input)
         return false;
 }
 
-void remove (Inputs *inputs, uint action)
+void remove (Inputs &inputs, uint action)
 {
-    for (Input *i = inputs->first; i != limit (*inputs);)
-        if (i->action == action)
-            i = remove (inputs, i);
+    for (int i = 0; i < inputs.length;)
+        if (inputs[i].action == action)
+            inputs.remove (i);
         else
-            i = i->next;
+            i++;
 }
 
-void set_inactive (Inputs *inputs, uint action)
+void set_inactive (Inputs &inputs, uint action)
 {
-    for (Input *i = inputs->first; i != limit (*inputs); i = i->next)
-        if (i->action == action)
-            i->active = false;
+    for (int i = 0; i < inputs.length; i++)
+        if (inputs[i].action == action)
+            inputs[i].active = false;
 }
 
-void update (Inputs *inputs)
+void update (Inputs &inputs)
 {
-    for (auto i = inputs->first; i != limit (*inputs);)
+    for (int i = 0; i < inputs.length;)
     {
-        update (&i->timer);
+        Input &input = inputs[i];
 
-        if (!i->active && i->timer.state & DONE)
-            i = remove (inputs, i);
+        update (input.timer);
+
+        if (!input.active && input.timer.state & DONE)
+            inputs.remove (i);
         else
-            i = i->next;
+            i++;
     }
 }
 
-void push (Inputs *inputs, uint action, uint config = SIMPLE)
+void push (Inputs &inputs, uint action, uint config = SIMPLE)
 {
-    push (inputs, { action, true, INPUT_TIMER (config) });
+    inputs.push ({ action, true, INPUT_TIMER (config) });
 }
 
 #endif

@@ -14,5 +14,5 @@ SDL2_CONFIG=$(CROSS)sdl2-config
 all : main.cc
 	$(CC) -Wall -Wno-write-strings -std=c++11 `$(SDL2_CONFIG) --cflags` `$(PKG_CONFIG) --cflags glew` `$(PKG_CONFIG) --cflags SDL2_image` `$(PKG_CONFIG) --cflags SDL2_mixer` main.cc `$(SDL2_CONFIG) --libs` `$(PKG_CONFIG) --libs SDL2_image` `$(PKG_CONFIG) --libs SDL2_mixer` `$(PKG_CONFIG) --libs glew` -o lighting_tale.exe
 
-shader : shaders_to_header.cc
-	$(CC) shaders_to_header.cc -o shaders_to_header.exe
+embed: embed_data.cc
+	$(CC) embed_data.cc -lSDL2 -o embed_data.exe

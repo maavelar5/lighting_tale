@@ -63,13 +63,11 @@ struct Body
     Damageable *damageable;
 
     BODY_TYPES type;
-
-    NODE_PROPERTIES (Body);
 };
 
 const int GRID_SIZE = 100;
 
-inline void push (Grid *grid, Body *body)
+inline void push (Grid &grid, Body *body)
 {
     ivec4 locator = {
         (int)body->pos.x / GRID_SIZE,
@@ -79,14 +77,8 @@ inline void push (Grid *grid, Body *body)
     };
 
     for (int i = locator.x; i <= locator.w; i++)
-    {
         for (int j = locator.y; j <= locator.h; j++)
-        {
-            Cell *found = find (grid, { i, j });
-
-            push (&found->bodies, { body, 0, 0 });
-        }
-    }
+            find (grid, { i, j }).bodies.push (body);
 }
 
 inline Body get_body ()
@@ -104,18 +96,11 @@ inline Body get_body ()
     b.animation  = 0;
     b.damageable = 0;
 
-    b.next = b.prev = 0;
-
     return b;
 }
 
-struct Bodies
-{
-    LIST_PROPERTIES (Body);
-};
+typedef array<Body> Bodies;
 
-COMMON_FUNCTIONS (Body, Bodies)
-
-static Bodies bodies;
+static Bodies bodies (1000, { 0 });
 
 #endif

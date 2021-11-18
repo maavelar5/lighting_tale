@@ -4,52 +4,31 @@
 #include "globals.hpp"
 #include "utils.hpp"
 
-struct BodyPTR
-{
-    Body *body;
-    NODE_PROPERTIES (BodyPTR);
-};
-
-struct BodyPTRS
-{
-    LIST_PROPERTIES (BodyPTR);
-};
-
 struct Cell
 {
-    int      x, y;
-    BodyPTRS bodies;
-
-    NODE_PROPERTIES (Cell)
+    int           x, y;
+    array<Body *> bodies;
 };
 
-struct Grid
+typedef array<Cell> Grid;
+
+inline Cell &find (Grid &grid, Cell cell)
 {
-    LIST_PROPERTIES (Cell)
-};
+    for (int i = 0; i < grid.length; i++)
+        if (grid[i].x == cell.x && grid[i].y == cell.y)
+            return grid[i];
 
-COMMON_FUNCTIONS (BodyPTR, BodyPTRS);
-
-inline Cell *push (Grid *list, Cell data) PUSH (Cell);
-inline Cell *limit (Grid list) LIMIT;
-
-inline Cell *find (Grid *list, Cell cell)
-{
-    for (Cell *i = list->first; i != limit (*list); i = i->next)
-        if (i->x == cell.x && i->y == cell.y)
-            return i;
-
-    return push (list, cell);
+    return grid.push (cell);
 }
 
-inline void reset (Grid *list)
+inline void reset (Grid &grid)
 {
-    for (Cell *i = list->first; i != limit (*list); i = i->next)
-        reset (&i->bodies);
+    for (int i = 0; i < grid.length; i++)
+        free (grid[i].bodies.data);
 
-    RESET;
+    grid.length = 0;
 }
 
-Grid grid = { 0, 0, 0, 0, 0 };
+Grid grid;
 
 #endif

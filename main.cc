@@ -24,6 +24,8 @@
 
 #include "level.hpp"
 
+#include "base64.hpp"
+
 enum SCREENS
 {
     PLAYING_SCREEN
@@ -64,7 +66,7 @@ int main (int argc, char** argv)
 {
     init_levels ();
 
-    if (levels.first == 0)
+    if (levels.length == 0)
         add_level ();
 
     SDL_Init (SDL_INIT_EVERYTHING);
@@ -80,11 +82,7 @@ int main (int argc, char** argv)
     glEnable (GL_BLEND);
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    char* mierda = file_read ("walk.wav");
-
-    fwrite (mierda, 1, strlen (mierda), stdout);
-
-    // // load support for the OGG and MOD sample/music formats
+    // load support for the OGG and MOD sample/music formats
     int flags   = MIX_INIT_MP3;
     int initted = Mix_Init (flags);
 
@@ -101,13 +99,8 @@ int main (int argc, char** argv)
         exit (2);
     }
 
-#ifdef _WIN32
-    Shader shader       = init_default_shader_from_src ();
-    Shader light_shader = init_lighting_shader_from_src ();
-#else
     Shader shader       = init_default_shader ();
     Shader light_shader = init_lighting_shader ();
-#endif
 
     Texture spritesheet  = load_xpm (spritesheet_xpm);
     Texture font_texture = load_xpm (font_xpm);
@@ -131,12 +124,12 @@ int main (int argc, char** argv)
 
         batch_render (window, light_shader, shader, spritesheet, font_texture);
 
-        for (auto n = bodies.first; n != limit (bodies);)
+        for (int i = 0; i < bodies.length;)
         {
-            if (n->state == REMOVE)
-                n = remove (&bodies, n);
+            if (bodies[i].state == REMOVE)
+                bodies.remove (i);
             else
-                n = n->next;
+                i++;
         }
     }
 

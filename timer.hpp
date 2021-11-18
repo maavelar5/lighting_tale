@@ -39,28 +39,28 @@ struct Animation
     const vec4 *sprites;
 };
 
-void set (Timer *t, uint state)
+void set (Timer &t, uint state)
 {
-    t->state   = state;
-    t->current = SDL_GetTicks ();
+    t.state   = state;
+    t.current = SDL_GetTicks ();
 }
 
-void update (Timer *t)
+void update (Timer &t)
 {
-    uint diff = SDL_GetTicks () - t->current, just_set = NONE;
+    uint diff = SDL_GetTicks () - t.current, just_set = NONE;
 
-    if (t->state == NONE)
+    if (t.state == NONE)
     {
         set (t, (START | JUST_STARTED));
         just_set = JUST_STARTED;
     }
-    else if (t->state & DONE && t->config & LOOP)
+    else if (t.state & DONE && t.config & LOOP)
     {
         set (t, START);
     }
-    else if (t->state & START && diff >= t->delay)
+    else if (t.state & START && diff >= t.delay)
     {
-        if (t->config & TWO_WAY)
+        if (t.config & TWO_WAY)
         {
             set (t, (WAIT | JUST_WAITED));
             just_set = JUST_WAITED;
@@ -71,45 +71,41 @@ void update (Timer *t)
             just_set = JUST_DONE;
         }
     }
-    else if (t->state & WAIT && diff >= t->restart_delay)
+    else if (t.state & WAIT && diff >= t.restart_delay)
     {
         set (t, DONE | JUST_DONE);
         just_set = JUST_DONE;
     }
 
-    if (t->state & JUST_STARTED && !(just_set & JUST_STARTED))
+    if (t.state & JUST_STARTED && !(just_set & JUST_STARTED))
     {
-        t->state &= ~JUST_STARTED;
+        t.state &= ~JUST_STARTED;
     }
 
-    if (t->state & JUST_WAITED && !(just_set & JUST_WAITED))
+    if (t.state & JUST_WAITED && !(just_set & JUST_WAITED))
     {
-        t->state &= ~JUST_WAITED;
+        t.state &= ~JUST_WAITED;
     }
 
-    if (t->state & JUST_DONE && !(just_set & JUST_DONE))
+    if (t.state & JUST_DONE && !(just_set & JUST_DONE))
     {
-        t->state &= ~JUST_DONE;
+        t.state &= ~JUST_DONE;
     }
 }
 
-vec4 update (Animation *a)
+vec4 update (Animation &a)
 {
-    update (&a->timer);
+    update (a.timer);
 
-    if (a->timer.state & DONE)
+    if (a.timer.state & DONE)
     {
-        if (a->current < a->size - 1)
-        {
-            a->current++;
-        }
+        if (a.current < a.size - 1)
+            a.current++;
         else
-        {
-            a->current = 0;
-        }
+            a.current = 0;
     }
 
-    return a->sprites[a->current];
+    return a.sprites[a.current];
 }
 
 struct Fade
@@ -120,7 +116,7 @@ struct Fade
     Timer timer;
 };
 
-void init (Fade *fade, uint config, float min_alpha, float max_alpha,
+void init (Fade &fade, uint config, float min_alpha, float max_alpha,
            uint delay, uint restart_delay)
 {
     uint timer_config = SIMPLE;
@@ -131,79 +127,75 @@ void init (Fade *fade, uint config, float min_alpha, float max_alpha,
         timer_config |= LOOP;
     }
 
-    fade->config    = config;
-    fade->min_alpha = min_alpha;
-    fade->max_alpha = max_alpha;
+    fade.config    = config;
+    fade.min_alpha = min_alpha;
+    fade.max_alpha = max_alpha;
 
-    fade->alpha = 0;
+    fade.alpha = 0;
 
     if (restart_delay == 0)
-    {
         restart_delay = delay;
-    }
 
     if (config == (FADE_IN | FADE_OUT))
-    {
         timer_config ^= TWO_WAY | SIMPLE;
-    }
 
-    fade->timer = { timer_config, delay, restart_delay, 0, 0 };
+    fade.timer = { timer_config, delay, restart_delay, 0, 0 };
 }
 
-float update (Fade *fade)
+float update (Fade &fade)
 {
-    update (&fade->timer);
+    update (fade.timer);
 
     float time_factor = 1.f;
-    float current = fade->timer.current, ticks = SDL_GetTicks ();
+    float current = fade.timer.current, ticks = SDL_GetTicks ();
 
-    if (fade->config == (FADE_IN | FADE_OUT))
+    if (fade.config == (FADE_IN | FADE_OUT))
     {
-        if (fade->timer.state & START)
+        if (fade.timer.state & START)
         {
-            fade->alpha
-                = fade->min_alpha
-                  + (((ticks - current) / (fade->timer.delay * time_factor))
-                     * fade->max_alpha);
+            fade.alpha
+                = fade.min_alpha
+                  + (((ticks - current) / (fade.timer.delay * time_factor))
+                     * fade.max_alpha);
         }
-        else if (fade->timer.state & WAIT)
+        else if (fade.timer.state & WAIT)
         {
-            fade->alpha = fade->max_alpha
-                          - (((ticks - current)
-                              / (fade->timer.restart_delay * time_factor))
-                             * fade->max_alpha);
+            fade.alpha = fade.max_alpha
+                         - (((ticks - current)
+                             / (fade.timer.restart_delay * time_factor))
+                            * fade.max_alpha);
         }
     }
-    else if (fade->config & FADE_IN)
+    else if (fade.config & FADE_IN)
     {
-        if (fade->timer.state & START)
+        if (fade.timer.state & START)
         {
-            fade->alpha
-                = (fade->min_alpha
-                   + ((ticks - current) / (fade->timer.delay * time_factor))
-                         * fade->max_alpha);
+            fade.alpha
+                = (fade.min_alpha
+                   + ((ticks - current) / (fade.timer.delay * time_factor))
+                         * fade.max_alpha);
         }
-        else if (fade->timer.state & DONE)
+        else if (fade.timer.state & DONE)
         {
-            fade->alpha = fade->max_alpha;
+            fade.alpha = fade.max_alpha;
         }
     }
-    else if (fade->config & FADE_OUT)
+    else if (fade.config & FADE_OUT)
     {
-        if (fade->timer.state & START)
+        if (fade.timer.state & START)
         {
-            fade->alpha
-                = fade->max_alpha
-                  - (((ticks - current) / (fade->timer.delay * time_factor))
-                     * fade->max_alpha);
+            fade.alpha
+                = fade.max_alpha
+                  - (((ticks - current) / (fade.timer.delay * time_factor))
+                     * fade.max_alpha);
         }
-        else if (fade->timer.state & DONE)
+        else if (fade.timer.state & DONE)
         {
-            fade->alpha = 0;
+            fade.alpha = 0;
         }
     }
 
-    return fade->alpha / 1.f;
+    return fade.alpha / 1.f;
 }
 
 #endif

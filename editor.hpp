@@ -10,44 +10,32 @@ struct Entity
 {
     vec2       pos, size;
     BODY_TYPES type;
-
-    NODE_PROPERTIES (Entity);
 };
 
-struct Level
+typedef array<Entity> Level;
+typedef array<Level>  Levels;
+
+Level *current_level;
+Levels levels;
+
+inline void save_level (FILE *fp, Level &entities)
 {
-    NODE_PROPERTIES (Level);
-    LIST_PROPERTIES (Entity);
-};
-
-struct Level_List
-{
-    LIST_PROPERTIES (Level);
-};
-
-COMMON_FUNCTIONS (Entity, Level);
-COMMON_FUNCTIONS (Level, Level_List);
-
-Level *    current_level;
-Level_List levels;
-
-inline void save_level (FILE *fp, Level *entities)
-{
-    if (!entities->size)
+    if (!entities.size)
         return;
 
     char  line[200];
     char *text = (char *)malloc (sizeof (char) * 40000);
 
     strcpy (text, "add_level();\n");
-    strcat (text, "entities = levels.last;\n");
+    strcat (text, "entities = &levels.last();\n");
 
-    for (auto n = entities->first; n != limit (*entities); n = n->next)
+    for (int i = 0; i < entities.length; i++)
     {
         sprintf (line,
-                 "push(entities, {{%.1ff, %.1ff}, {%.1ff, %.1ff}, "
+                 "entities->push({{%.1ff, %.1ff}, {%.1ff, %.1ff}, "
                  "(BODY_TYPES)%d});\n",
-                 n->pos.x, n->pos.y, n->size.x, n->size.y, n->type);
+                 entities[i].pos.x, entities[i].pos.y, entities[i].size.x,
+                 entities[i].size.y, entities[i].type);
 
         strcat (text, line);
     }
@@ -72,9 +60,9 @@ void save_levels ()
 
     fputs (text, fp);
 
-    for (auto n = levels.first; n != limit (levels); n = n->next)
+    for (int i = 0; i < levels.length; i++)
     {
-        save_level (fp, n);
+        save_level (fp, levels[i]);
     }
 
     strcpy (text, "}\n\n#endif\n");
@@ -86,20 +74,21 @@ void save_levels ()
 
 inline void add_level ()
 {
-    push (&levels, { 0 });
+    levels.push ({});
 
-    current_level = levels.last;
+    current_level = &levels.last ();
 }
 
 inline void update_entities ()
 {
-    reset (&bodies);
-    reset (&lights);
+    bodies.length = lights.length = 0;
 
-    for (auto n = levels.first; n != limit (levels); n = n->next)
+    for (int i = 0; i < levels.length; i++)
     {
-        for (auto e = n->first; e != limit (*n); e = e->next)
+        for (int j = 0; j < levels[i].length; j++)
         {
+            Entity *e = &levels[i][j];
+
             switch (e->type)
             {
                 case FIRE: add_fire (e->pos, e->size); break;
@@ -116,7 +105,7 @@ inline void update_entities ()
 
 inline void add_entity (vec2 pos, vec2 size, BODY_TYPES type)
 {
-    push (current_level, { pos, size, type });
+    current_level->push ({ pos, size, type });
 
     update_entities ();
 }
@@ -125,13 +114,15 @@ inline void remove_entity (vec2 pos)
 {
     pos += camera;
 
-    for (auto n = current_level->first; n != limit (*current_level);)
+    for (int i = 0; i < current_level->length;)
     {
+        Entity *n = &current_level->at (i);
+
         if ((pos.x >= n->pos.x && pos.x <= (n->pos.x + n->size.x))
             && (pos.y >= n->pos.y && pos.y <= (n->pos.y + n->size.y)))
-            n = remove (current_level, n);
+            current_level->remove (i);
         else
-            n = n->next;
+            i++;
     }
 
     update_entities ();

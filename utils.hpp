@@ -175,4 +175,219 @@ void load_file ()
     // fclose (fp);
 }
 
+template <class T> struct array
+{
+    T * data;
+    int length, size;
+
+    array ()
+    {
+        data = 0;
+        size = length = 0;
+    }
+
+    array (int size, T value)
+    {
+        data   = new T[size];
+        length = 0;
+
+        this->size = size;
+
+        for (int i = 0; i < size; i++)
+            data[i] = value;
+    }
+
+    void resize ()
+    {
+        if (size == 0)
+        {
+            data = new T[++size];
+        }
+        else if (length >= size)
+        {
+            T *data = new T[size *= 2];
+
+            for (int i = 0; i < length; i++)
+                data[i] = this->data[i];
+
+            delete this->data;
+
+            this->data = data;
+        }
+    }
+
+    T &push (T value)
+    {
+        resize ();
+        data[length++] = value;
+
+        return data[length - 1];
+    }
+
+    T &push (T value, int index)
+    {
+        resize ();
+
+        length++;
+
+        for (int i = length - 1; i > index; i--)
+            data[i] = data[i - 1];
+
+        data[index] = value;
+
+        return data[index];
+    }
+
+    void remove (int index)
+    {
+        if (length <= 0 || index > length)
+            return;
+
+        for (int i = index; i < length - 1; i++)
+            data[i] = data[i + 1];
+
+        length--;
+    }
+
+    T &at (int index)
+    {
+        assert (size > 0);
+
+        if (index >= length)
+            return data[length - 1];
+        else
+            return data[index];
+    }
+
+    T &operator[] (int index)
+    {
+        return at (index);
+    }
+
+    T &last ()
+    {
+        assert (size > 0);
+
+        if (length == 0)
+            return data[0];
+        else
+            return data[length - 1];
+    }
+};
+
+struct string : public array<char>
+{
+    char *  ref;
+    string *next, *prev;
+
+    string ()
+    {
+        ref  = 0;
+        next = prev = 0;
+    }
+
+    string (const char str[])
+    {
+        length = 0;
+
+        for (size_t i = 0; i < strlen (str); i++)
+            push (str[i]);
+
+        ref  = 0;
+        next = prev = 0;
+    }
+
+    char *c_str ()
+    {
+        if (ref)
+            delete ref;
+
+        ref = new char[length + 1];
+
+        for (int i = 0; i < length; i++)
+            ref[i] = data[i];
+
+        ref[length] = '\0';
+
+        return ref;
+    }
+
+    void print ()
+    {
+        printf ("%s\n", c_str ());
+    }
+
+    void operator= (string s)
+    {
+        length = 0;
+
+        for (int i = 0; i < s.length; i++)
+            push (s[i]);
+    }
+
+    void operator= (const char str[])
+    {
+        length = 0;
+
+        for (size_t i = 0; i < strlen (str); i++)
+            push (str[i]);
+    }
+
+    void operator+= (const char str[])
+    {
+        for (size_t i = 0; i < strlen (str); i++)
+            push (str[i]);
+    }
+
+    void operator+= (const unsigned char str[])
+    {
+        for (size_t i = 0; str[i] != '\0'; i++)
+            push (str[i]);
+    }
+
+    void operator+= (string str)
+    {
+        for (int i = 0; i < str.length; i++)
+            push (str[i]);
+    }
+
+    void operator+= (char c)
+    {
+        push (c);
+    }
+
+    bool operator== (const char str[])
+    {
+        if ((int)strlen (str) != length)
+            return false;
+
+        for (int i = 0; i < (int)strlen (str); i++)
+            if (str[i] != data[i])
+                return false;
+
+        return true;
+    }
+
+    bool operator== (string str)
+    {
+        if (str.length != length)
+            return false;
+
+        for (int i = 0; i < length; i++)
+            if (str[i] != data[i])
+                return false;
+
+        return true;
+    }
+
+    int find (char c)
+    {
+        for (int i = 0; i < length; i++)
+            if (data[i] == c)
+                return i;
+
+        return -1;
+    }
+};
+
 #endif

@@ -6,6 +6,8 @@
 #include "shader.hpp"
 #include "sound.hpp"
 
+#include "embedded_data.hpp"
+
 inline void add_platform (vec2 pos, vec2 size)
 {
     Body b = get_body ();
@@ -16,7 +18,7 @@ inline void add_platform (vec2 pos, vec2 size)
 
     b.aabb = generate_aabb (&b);
 
-    push (&bodies, b);
+    bodies.push (b);
 }
 
 inline void add_enemy (vec2 pos, vec2 size)
@@ -32,11 +34,11 @@ inline void add_enemy (vec2 pos, vec2 size)
 
     b.vel = { 0.f, 0.f };
 
-    Body *enemy = push (&bodies, b);
+    Body &enemy = bodies.push (b);
 
-    enemy->damageable = new Damageable ();
+    enemy.damageable = new Damageable ();
 
-    *enemy->damageable = { 2, 2, { SIMPLE, 400, 0, 0, DONE } };
+    *enemy.damageable = { 2, 2, { SIMPLE, 400, 0, 0, DONE } };
 }
 
 inline void add_fire (vec2 pos, vec2 size)
@@ -61,7 +63,7 @@ inline void add_fire (vec2 pos, vec2 size)
         fire_coords,
     };
 
-    push (&bodies, b);
+    bodies.push (b);
 }
 
 inline void draw_platform (Body &b)
@@ -75,35 +77,33 @@ inline void draw_platform (Body &b)
     sprite.pos  = b.pos - camera;
     sprite.size = b.size;
 
-    push (&squares,
-          (Square) { sprite.pos, sprite.size, { 0, .5, .5, 0.2 }, 0, 0 });
+    squares.push ({ sprite.pos, sprite.size, { 0, .5, .5, 0.2 }, 0, 0 });
 }
 
 inline void draw_fire (Body &b)
 {
-    push (&glows, { b.pos - camera, b.size, { 0.5f, 0.3f, 0.0f, 0.3f } });
-    push (&lights, { b.pos, b.size, true });
-
-    push (&sprites, {
-                        b.pos - camera,
-                        b.size,
-                        update (b.animation),
-                        0,
-                        FLIP_X_FALSE,
-                        1,
-                    });
+    glows.push ({ b.pos - camera, b.size, { 0.5f, 0.3f, 0.0f, 0.3f } });
+    lights.push ({ b.pos, b.size, true });
+    sprites.push ({
+        b.pos - camera,
+        b.size,
+        update (*b.animation),
+        0,
+        FLIP_X_FALSE,
+        1,
+    });
 }
 
 inline void draw_enemy (Body &b)
 {
     // push (&glows, { b.pos - camera, b.size, { 1.f, 1.f, 0.0f } });
 
-    push (&sprites, { b.pos - camera,
-                      b.size,
-                      { 0.f, 16.f, 16.f, 16.f },
-                      SDL_GetTicks () / 3.f,
-                      FLIP_X_FALSE,
-                      1 });
+    sprites.push ({ b.pos - camera,
+                    b.size,
+                    { 0.f, 16.f, 16.f, 16.f },
+                    SDL_GetTicks () / 3.f,
+                    FLIP_X_FALSE,
+                    1 });
 }
 
 inline void add_player (vec2 pos, vec2 size)
@@ -119,59 +119,59 @@ inline void add_player (vec2 pos, vec2 size)
     body.damageable  = new Damageable ();
     *body.damageable = { 1, 1, { TWO_WAY, 300, 1000, 0, DONE } };
 
-    Body *b = push (&bodies, body);
+    Body &b = bodies.push (body);
 
-    b->player = new Player ();
+    b.player = new Player ();
 
-    b->player->body        = b;
-    b->player->flip        = NONE;
-    b->player->sword_delay = { TWO_WAY, 250, 250, 0, DONE };
+    b.player->body        = &b;
+    b.player->flip        = NONE;
+    b.player->sword_delay = { TWO_WAY, 250, 250, 0, DONE };
 
-    body.pos  = b->pos;
+    body.pos  = b.pos;
     body.type = PLAYER_SWORD;
     body.size = { 16.f, 16.f };
 
-    init (&b->player->sword_fade, FADE_OUT, 0, .6f, 500, 0);
+    init (b.player->sword_fade, FADE_OUT, 0, .6f, 500, 0);
 
-    b->player->sword         = push (&bodies, body);
-    b->player->sword->player = b->player;
+    b.player->sword         = &bodies.push (body);
+    b.player->sword->player = b.player;
 }
 
-inline void move_enemy (Body *b)
+inline void move_enemy (Body &b)
 {
-    b->prev_pos = b->pos;
+    b.prev_pos = b.pos;
 
-    if (b->sensor)
+    if (b.sensor)
     {
-        if (b->sensor & TOP)
-            b->vel.y = b->speed;
-        if (b->sensor & BOT)
-            b->vel.y = -b->speed;
-        if (b->sensor & LEFT)
-            b->vel.x = b->speed;
-        if (b->sensor & RIGHT)
-            b->vel.x = -b->speed;
+        if (b.sensor & TOP)
+            b.vel.y = b.speed;
+        if (b.sensor & BOT)
+            b.vel.y = -b.speed;
+        if (b.sensor & LEFT)
+            b.vel.x = b.speed;
+        if (b.sensor & RIGHT)
+            b.vel.x = -b.speed;
     }
 
     static Sound damaged_sound = {
         { SIMPLE, 300, 50, 0, 0 },
-        load_wav ("damaged.wav"),
+        load_wav (damaged_raw),
     };
 
-    b->prev_pos = b->pos;
+    b.prev_pos = b.pos;
 
-    if (b->damageable->hit_recovery.state & JUST_STARTED)
+    if (b.damageable->hit_recovery.state & JUST_STARTED)
     {
         play (&damaged_sound);
     }
 
-    b->vel.y += ((gravity / 8) * time_data::step);
-    b->pos += (b->vel * time_data::step);
-    b->sensor = NONE;
+    b.vel.y += ((gravity / 8) * time_data::step);
+    b.pos += (b.vel * time_data::step);
+    b.sensor = NONE;
 
-    push (&grid, b);
+    push (grid, &b);
 
-    update (&b->damageable->hit_recovery);
+    update (b.damageable->hit_recovery);
 }
 
 inline void move_camera (Body b)
@@ -193,80 +193,82 @@ inline void move_camera (Body b)
         camera.x = 0;
 }
 
-inline void move_player (Body *b, Inputs *inputs)
+inline void move_player (Body &b, Inputs &inputs)
 {
     static Sound attack_sound = {
         { SIMPLE, 300, 50, 0, 0 },
-        load_wav ("attack.wav"),
+        load_wav (attack_raw),
     };
 
     static Sound jump_sound = {
         { SIMPLE, 300, 50, 0, 0 },
-        load_wav ("jump.wav"),
+        load_wav (jump_raw),
     };
 
     static Sound damaged_sound = {
         { SIMPLE, 300, 50, 0, 0 },
-        load_wav ("damaged.wav"),
+        load_wav (damaged_raw),
     };
 
-    b->prev_pos = b->pos;
+    b.prev_pos = b.pos;
 
-    if (b->damageable->hit_recovery.state & JUST_STARTED)
+    if (b.damageable->hit_recovery.state & JUST_STARTED)
     {
         play (&damaged_sound);
     }
 
-    update (&b->damageable->hit_recovery);
+    update (b.damageable->hit_recovery);
 
-    if (b->damageable->hit_recovery.state & START)
+    if (b.damageable->hit_recovery.state & START)
     {
-        b->sensor = NONE;
-        b->vel.y += (gravity * time_data::step);
-        b->pos += (b->vel * time_data::step);
-        b->player->sword->pos = b->pos;
+        b.sensor = NONE;
+        b.vel.y += (gravity * time_data::step);
+        b.pos += (b.vel * time_data::step);
+        b.player->sword->pos = b.pos;
 
-        move_camera (*b);
+        move_camera (b);
 
-        push (&grid, b);
+        push (grid, &b);
         return;
     }
 
     Input *left = 0, *jump = 0, *right = 0, *attack = 0, *down = 0, *up = 0;
 
-    Body *  sword  = b->player->sword;
-    Player *player = b->player;
+    Body *  sword  = b.player->sword;
+    Player *player = b.player;
 
-    for (Input *i = inputs->first; i != limit (*inputs); i = i->next)
+    for (int i = 0; i < inputs.length; i++)
     {
-        switch (i->action)
+        Input &input = inputs[i];
+
+        switch (input.action)
         {
-            case PLAYER_UP: up = i; break;
-            case PLAYER_JUMP: jump = i; break;
-            case PLAYER_LEFT: left = i; break;
-            case PLAYER_RIGHT: right = i; break;
-            case PLAYER_DOWN: down = i; break;
-            case PLAYER_ATTACK: attack = i; break;
+            case PLAYER_UP: up = &input; break;
+            case PLAYER_JUMP: jump = &input; break;
+            case PLAYER_LEFT: left = &input; break;
+            case PLAYER_RIGHT: right = &input; break;
+            case PLAYER_DOWN: down = &input; break;
+            case PLAYER_ATTACK: attack = &input; break;
         }
     }
 
     if (active (jump))
     {
-        if (b->sensor & (LEFT | RIGHT) && !(b->sensor & BOT))
+        if (b.sensor & (LEFT | RIGHT) && !(b.sensor & BOT))
         {
             play (&jump_sound);
 
-            set (&jump->timer, DONE);
+            set (jump->timer, DONE);
 
-            b->vel.x = (b->vel.x > 0) ? -b->max_speed : b->max_speed;
-            b->vel.y = -250.f;
+            b.vel.x = (b.vel.x > 0) ? -b.max_speed : b.max_speed;
+            b.vel.y = -250.f;
         }
-        else if (b->sensor & BOT)
+        else if (b.sensor & BOT)
         {
             play (&jump_sound);
 
-            set (&jump->timer, DONE);
-            b->vel.y = -250.f;
+            set (jump->timer, DONE);
+            b.vel.y = -250.f;
         }
     }
 
@@ -274,102 +276,93 @@ inline void move_player (Body *b, Inputs *inputs)
     {
         if (left)
         {
-            b->accel.x = (b->vel.x > 0) ? -b->speed * 8 : -b->speed;
+            b.accel.x = (b.vel.x > 0) ? -b.speed * 8 : -b.speed;
 
-            if (b->vel.x < -b->max_speed)
-                b->accel.x = 0;
+            if (b.vel.x < -b.max_speed)
+                b.accel.x = 0;
         }
         else if (right)
         {
-            b->accel.x = (b->vel.x < 0) ? b->speed * 8 : b->speed;
+            b.accel.x = (b.vel.x < 0) ? b.speed * 8 : b.speed;
 
-            if (b->vel.x > b->max_speed)
-                b->accel.x = 0;
+            if (b.vel.x > b.max_speed)
+                b.accel.x = 0;
         }
 
-        b->vel.x += (b->accel.x * time_data::step);
+        b.vel.x += (b.accel.x * time_data::step);
     }
     else
     {
-        if (b->vel.x > 0)
-            b->accel.x = -b->speed * 8;
-        else if (b->vel.x < 0)
-            b->accel.x = b->speed * 8;
+        if (b.vel.x > 0)
+            b.accel.x = -b.speed * 8;
+        else if (b.vel.x < 0)
+            b.accel.x = b.speed * 8;
 
-        b->vel.x += (b->accel.x * time_data::step);
+        b.vel.x += (b.accel.x * time_data::step);
 
-        if ((b->accel.x > 0 && b->vel.x > 0)
-            || (b->accel.x < 0 && b->vel.x < 0))
-            b->vel.x = 0;
+        if ((b.accel.x > 0 && b.vel.x > 0) || (b.accel.x < 0 && b.vel.x < 0))
+            b.vel.x = 0;
     }
 
-    if (!(b->sensor & BOT))
+    if (!(b.sensor & BOT))
     {
         float local_gravity = gravity;
         float max_gravity   = 400.f;
 
-        if (b->vel.y > 0)
+        if (b.vel.y > 0)
         {
-            if (b->sensor & LEFT && left)
+            if (b.sensor & LEFT && left)
                 max_gravity /= 8.f;
-            else if (b->sensor & RIGHT && right)
+            else if (b.sensor & RIGHT && right)
                 max_gravity /= 8.f;
         }
 
-        b->vel.y += (local_gravity * time_data::step);
+        b.vel.y += (local_gravity * time_data::step);
 
-        if (b->vel.y > max_gravity)
-            b->vel.y = max_gravity;
+        if (b.vel.y > max_gravity)
+            b.vel.y = max_gravity;
     }
 
-    b->pos += (b->vel * time_data::step);
+    b.pos += (b.vel * time_data::step);
 
-    move_camera (*b);
+    move_camera (b);
 
-    b->sensor = NONE;
+    b.sensor = NONE;
 
-    sword->pos = b->pos;
+    sword->pos = b.pos;
 
-    if (active (attack) && b->player->sword_delay.state & DONE)
-        set (&b->player->sword_delay, START | JUST_STARTED);
+    if (active (attack) && b.player->sword_delay.state & DONE)
+        set (b.player->sword_delay, START | JUST_STARTED);
 
-    if (b->player->sword_delay.state & JUST_STARTED)
+    if (b.player->sword_delay.state & JUST_STARTED)
     {
         play (&attack_sound);
 
         if (up)
-            b->player->sword_direction = TOP;
+            b.player->sword_direction = TOP;
         else if (down)
-            b->player->sword_direction |= BOT;
-        else if (b->player->flip == FLIP_X_FALSE)
-            b->player->sword_direction |= LEFT;
+            b.player->sword_direction |= BOT;
+        else if (b.player->flip == FLIP_X_FALSE)
+            b.player->sword_direction |= LEFT;
         else
-            b->player->sword_direction |= RIGHT;
+            b.player->sword_direction |= RIGHT;
     }
 
-    if (b->player->sword_delay.state & START)
+    if (b.player->sword_delay.state & START)
     {
         sword->size = { 16.f, 16.f };
 
         if (player->sword_direction & TOP)
-        {
             sword->pos.y -= sword->size.y / 2.f;
-        }
         else if (player->sword_direction & BOT)
-        {
-            sword->pos.y += b->size.y / 2.f;
-        }
+            sword->pos.y += b.size.y / 2.f;
 
         if (player->sword_direction & LEFT)
-        {
             sword->pos.x -= sword->size.x / 2.f;
-        }
         else if (player->sword_direction & RIGHT)
-        {
-            sword->pos.x += b->size.x / 2.f;
-        }
+            sword->pos.x += b.size.x / 2.f;
 
-        push (&grid, b->player->sword);
+        push (grid, b.player->sword);
     }
     else
     {
@@ -377,18 +370,18 @@ inline void move_player (Body *b, Inputs *inputs)
 
         player->sword_direction = NONE;
 
-        if (b->player->flip == FLIP_X_TRUE)
+        if (b.player->flip == FLIP_X_TRUE)
             sword->pos.x -= sword->size.x / 2;
         else
-            sword->pos.x += b->size.x - 4;
+            sword->pos.x += b.size.x - 4;
     }
 
-    push (&grid, b);
+    push (grid, &b);
 
-    update (&b->player->sword_delay);
+    update (b.player->sword_delay);
 }
 
-inline void draw_player (Body b, Inputs *inputs)
+inline void draw_player (Body b, Inputs &inputs)
 {
     static vec4 standing_coords[] = {
         { 0, 0, 16, 16 },
@@ -455,7 +448,7 @@ inline void draw_player (Body b, Inputs *inputs)
     // load sample.wav in to sample
     static Sound walk_sound = {
         { SIMPLE | LOOP, 400, 50, 0, 0 },
-        load_wav ("walk.wav"),
+        load_wav (walk_raw),
     };
 
     uint *flip = &b.player->flip;
@@ -464,16 +457,18 @@ inline void draw_player (Body b, Inputs *inputs)
 
     Input *left = 0, *jump = 0, *right = 0, *attack = 0, *down = 0, *up = 0;
 
-    for (Input *i = inputs->first; i != limit (*inputs); i = i->next)
+    for (int i = 0; i < inputs.length; i++)
     {
-        switch (i->action)
+        Input &input = inputs[i];
+
+        switch (input.action)
         {
-            case PLAYER_JUMP: jump = i; break;
-            case PLAYER_LEFT: left = i; break;
-            case PLAYER_RIGHT: right = i; break;
-            case PLAYER_ATTACK: attack = i; break;
-            case PLAYER_UP: up = i; break;
-            case PLAYER_DOWN: down = i; break;
+            case PLAYER_UP: up = &input; break;
+            case PLAYER_JUMP: jump = &input; break;
+            case PLAYER_LEFT: left = &input; break;
+            case PLAYER_RIGHT: right = &input; break;
+            case PLAYER_DOWN: down = &input; break;
+            case PLAYER_ATTACK: attack = &input; break;
         }
     }
 
@@ -491,11 +486,11 @@ inline void draw_player (Body b, Inputs *inputs)
     else
         b.animation = &standing;
 
-    sprite = update (b.animation);
+    sprite = update (*b.animation);
 
-    push (&glows, { b.pos - camera, b.size, { 0.01f, 0.01f, 0.01f, 1.f } });
-    push (&lights, { b.pos, b.size, true });
-    push (&sprites, { b.pos - camera, b.size, sprite, b.angle, *flip, 1 });
+    glows.push ({ b.pos - camera, b.size, { 0.01f, 0.01f, 0.01f, 1.f } });
+    lights.push ({ b.pos, b.size, true });
+    sprites.push ({ b.pos - camera, b.size, sprite, b.angle, *flip, 1 });
 
     float angle             = sin (SDL_GetTicks () / 250.f) * 25.f;
     float sword_swing_alpha = 1;
@@ -513,7 +508,7 @@ inline void draw_player (Body b, Inputs *inputs)
         // = 1 - ((SDL_GetTicks () - b.player->sword_delay.current) /
         // 100.f);
 
-        sword_swing_alpha = update (&b.player->sword_fade);
+        sword_swing_alpha = update (b.player->sword_fade);
 
         angle -= (SDL_GetTicks () - b.player->sword_delay.current);
 
@@ -525,28 +520,28 @@ inline void draw_player (Body b, Inputs *inputs)
         else if (up)
             wind_angle = 0;
 
-        push (&sprites, {
-                            b.player->sword->pos - camera,
-                            b.player->sword->size,
-                            { 16, 80, 16, 16 },
-                            // update (&sword),
-                            wind_angle,
-                            *flip,
-                            sword_swing_alpha,
-                        });
+        sprites.push ({
+            b.player->sword->pos - camera,
+            b.player->sword->size,
+            { 16, 80, 16, 16 },
+            // update (&sword),
+            wind_angle,
+            *flip,
+            sword_swing_alpha,
+        });
     }
     else
     {
-        set (&sword.timer, NONE);
-        set (&b.player->sword_fade.timer, NONE);
+        set (sword.timer, NONE);
+        set (b.player->sword_fade.timer, NONE);
         sword.current = 0;
 
-        push (&sprites, { b.player->sword->pos - camera,
-                          b.player->sword->size,
-                          { 0, 80, 16, 16 },
-                          angle,
-                          *flip,
-                          1 });
+        sprites.push ({ b.player->sword->pos - camera,
+                        b.player->sword->size,
+                        { 0, 80, 16, 16 },
+                        angle,
+                        *flip,
+                        1 });
     }
 }
 
@@ -557,8 +552,8 @@ inline void add_mouse (vec2 pos)
     b.pos  = pos;
     b.size = { 16.f, 16.f };
 
-    push (&lights, { b.pos, b.size, false });
-    push (&bodies, b);
+    lights.push ({ b.pos, b.size, false });
+    bodies.push (b);
 }
 
 inline void draw_mouse (Body *b)

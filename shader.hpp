@@ -7,7 +7,7 @@
 #include "time_data.hpp"
 #include "utils.hpp"
 
-#include "shader_release.hpp"
+#include "embedded_data.hpp"
 
 enum FLIP
 {
@@ -28,8 +28,6 @@ struct Square
     vec4  color;
     float angle;
     bool  outline;
-
-    NODE_PROPERTIES (Square);
 };
 
 struct Sprite
@@ -39,64 +37,32 @@ struct Sprite
     float angle;
     uint  flip;
     float alpha;
-
-    NODE_PROPERTIES (Sprite);
 };
 
 struct Light
 {
     vec2 pos, size;
     bool offset;
-
-    NODE_PROPERTIES (Light);
 };
 
 struct Glow
 {
     vec2 pos, size;
     vec4 color;
-
-    NODE_PROPERTIES (Glow);
 };
 
 struct Text
 {
     vec2 pos;
     char string[512];
-
-    NODE_PROPERTIES (Text);
 };
 
-struct Lights
-{
-    LIST_PROPERTIES (Light);
-};
-
-struct Glows
-{
-    LIST_PROPERTIES (Glow);
-};
-
-struct Squares
-{
-    LIST_PROPERTIES (Square);
-};
-
-struct Sprites
-{
-    LIST_PROPERTIES (Sprite);
-};
-
-struct Texts
-{
-    LIST_PROPERTIES (Text);
-};
-
-COMMON_FUNCTIONS (Glow, Glows);
-COMMON_FUNCTIONS (Light, Lights);
-COMMON_FUNCTIONS (Square, Squares);
-COMMON_FUNCTIONS (Sprite, Sprites);
-COMMON_FUNCTIONS (Text, Texts);
+typedef array<Shader> Shaders;
+typedef array<Square> Squares;
+typedef array<Sprite> Sprites;
+typedef array<Light>  Lights;
+typedef array<Glow>   Glows;
+typedef array<Text>   Texts;
 
 Glows   glows;
 Lights  lights;
@@ -104,21 +70,21 @@ Squares squares;
 Sprites sprites;
 Texts   texts;
 
-void copy_to_array (Lights lights, vec2 *arr)
+inline void copy_to_array (Lights lights, vec2 *arr)
 {
-    int i = 0;
-
-    for (Light *n = lights.first; n != limit (lights); n = n->next, i++)
+    for (int i = 0; i < lights.length; i++)
     {
-        if (n->offset)
+        Light n = lights[i];
+
+        if (lights[i].offset)
         {
-            arr[i].x = ((n->pos.x + (n->size.x / 2) - camera.x) / W);
-            arr[i].y = 1 - ((n->pos.y + (n->size.y / 2) - camera.y) / H);
+            arr[i].x = ((n.pos.x + (n.size.x / 2) - camera.x) / W);
+            arr[i].y = 1 - ((n.pos.y + (n.size.y / 2) - camera.y) / H);
         }
         else
         {
-            arr[i].x = ((n->pos.x + (n->size.x / 2)) / W);
-            arr[i].y = 1 - ((n->pos.y + (n->size.y / 2)) / H);
+            arr[i].x = ((n.pos.x + (n.size.x / 2)) / W);
+            arr[i].y = 1 - ((n.pos.y + (n.size.y / 2)) / H);
         }
     }
 }
@@ -327,7 +293,7 @@ inline Shader init_default_shader ()
         1.0f, 0.0f,    //
     };
 
-    Shader shader = create ("vertex.glsl", "fragment.glsl");
+    Shader shader = create_from_src (vertex_raw, fragment_raw);
 
     glGenVertexArrays (1, &shader.vao);
     glGenBuffers (1, &shader.vbo);
@@ -359,75 +325,7 @@ inline Shader init_lighting_shader ()
         1.0f,  1.0f,  1.0f, 1.0f,
     };
 
-    Shader shader = create ("light_vertex.glsl", "light_fragment.glsl");
-
-    glGenVertexArrays (1, &shader.vao);
-    glGenBuffers (1, &shader.vbo);
-
-    glBindVertexArray (shader.vao);
-
-    glBindBuffer (GL_ARRAY_BUFFER, shader.vbo);
-    glBufferData (GL_ARRAY_BUFFER, sizeof (points), &points, GL_STATIC_DRAW);
-    glVertexAttribPointer (0, 4, GL_FLOAT, GL_FALSE, 4 * sizeof (float),
-                           (void *)0);
-    glEnableVertexAttribArray (0);
-
-    glUseProgram (shader.id);
-
-    set_uniform (shader, "u_image", 0);
-    set_uniform (shader, "u_projection", ortho (W, W));
-    set_uniform (shader, "u_max_lights", 0);
-
-    glUseProgram (0);
-
-    return shader;
-}
-
-inline Shader init_default_shader_from_src ()
-{
-    const float points[] = {
-        0.0f, 1.0f,    //
-        1.0f, 0.0f,    //
-        0.0f, 0.0f,    //
-
-        0.0f, 1.0f,    //
-        1.0f, 1.0f,    //
-        1.0f, 0.0f,    //
-    };
-
-    Shader shader = create_from_src (vertex, fragment);
-
-    glGenVertexArrays (1, &shader.vao);
-    glGenBuffers (1, &shader.vbo);
-
-    glBindVertexArray (shader.vao);
-    glBindBuffer (GL_ARRAY_BUFFER, shader.vbo);
-
-    glVertexAttribPointer (0, 2, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray (0);
-
-    glBufferData (GL_ARRAY_BUFFER, sizeof (points), points, GL_STATIC_DRAW);
-
-    glUseProgram (shader.id);
-    set_uniform (shader, "u_image", 0);
-    set_uniform (shader, "u_projection", ortho (W, H));
-
-    return shader;
-}
-
-inline Shader init_lighting_shader_from_src ()
-{
-    float points[] = {
-        -1.0f, 1.0f,  0.0f, 1.0f,    //
-        -1.0f, -1.0f, 0.0f, 0.0f,    //
-        1.0f,  -1.0f, 1.0f, 0.0f,    //
-
-        -1.0f, 1.0f,  0.0f, 1.0f,    //
-        1.0f,  -1.0f, 1.0f, 0.0f,    //
-        1.0f,  1.0f,  1.0f, 1.0f,
-    };
-
-    Shader shader = create_from_src (light_vertex, light_fragment);
+    Shader shader = create_from_src (light_vertex_raw, light_fragment_raw);
 
     glGenVertexArrays (1, &shader.vao);
     glGenBuffers (1, &shader.vbo);
@@ -677,11 +575,12 @@ void batch_render (SDL_Window *window, Shader light_shader,
     glBindTexture (GL_TEXTURE_2D, spritesheet.id);
 
     glBlendFunc (GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    for (auto i = sprites.first; i != limit (sprites); i = i->next)
-        draw (sprite_shader, spritesheet, *i);
 
-    for (auto i = squares.first; i != limit (squares); i = i->next)
-        draw (sprite_shader, *i);
+    for (int i = 0; i < sprites.length; i++)
+        draw (sprite_shader, spritesheet, sprites[i]);
+
+    for (int i = 0; i < squares.length; i++)
+        draw (sprite_shader, squares[i]);
 
     if (maintain_aspect_ratio)
         glViewport (w / 2, h / 2, ratio, ratio);
@@ -714,8 +613,8 @@ void batch_render (SDL_Window *window, Shader light_shader,
     glBindVertexArray (sprite_shader.vao);
 
     glBlendFunc (GL_SRC_ALPHA, GL_ONE);
-    for (auto i = glows.first; i != limit (glows); i = i->next)
-        draw (sprite_shader, *i);
+    for (int i = 0; i < glows.length; i++)
+        draw (sprite_shader, glows[i]);
 
     glActiveTexture (GL_TEXTURE0);
     glBindTexture (GL_TEXTURE_2D, font_texture.id);
@@ -731,11 +630,8 @@ void batch_render (SDL_Window *window, Shader light_shader,
 
     SDL_GL_SwapWindow (window);
 
-    reset (&squares);
-    reset (&sprites);
-    reset (&glows);
-    reset (&texts);
-    reset (&lights);
+    squares.length = sprites.length = glows.length = texts.length
+        = lights.length                            = 0;
 }
 
 #endif

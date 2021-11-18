@@ -146,7 +146,7 @@ void solve_by_type (Body *first, Body *second, AABB a, AABB b, AABB c)
                 if (first->damageable->hp <= 0)
                     first->state = REMOVE;
 
-                set (&first->damageable->hit_recovery, START | JUST_STARTED);
+                set (first->damageable->hit_recovery, START | JUST_STARTED);
             }
             break;
         case PLAYER_SWORD:
@@ -175,7 +175,7 @@ void solve_by_type (Body *first, Body *second, AABB a, AABB b, AABB c)
 
                         first->vel.y = -200.f;
 
-                        set (&first->damageable->hit_recovery,
+                        set (first->damageable->hit_recovery,
                              START | JUST_STARTED);
                     }
                     break;
@@ -188,31 +188,24 @@ void solve_by_type (Body *first, Body *second, AABB a, AABB b, AABB c)
 
 void check ()
 {
-    for (Cell *cell = grid.first; cell != limit (grid); cell = cell->next)
+    for (int g = 0; g < grid.length; g++)
     {
-        if (cell->bodies.length <= 1)
+        if (grid[g].bodies.length <= 1)
             continue;
 
-        BodyPTRS *bodies     = &cell->bodies;
-        BodyPTR * cond       = limit (*bodies);
-        BodyPTR * inner_cond = 0;
-
-        if (!cond)
-            cond = bodies->last;
-
-        for (BodyPTR *i = bodies->first; i != cond; i = i->next)
+        for (int i = 0; i < grid[g].bodies.length - 1; i++)
         {
+            Body *first = grid[g].bodies[i];
 
-            if (cond)
-                inner_cond = cond->next;
-
-            for (BodyPTR *j = i->next; j != inner_cond; j = j->next)
+            for (int j = i + 1; j < grid[g].bodies.length; j++)
             {
-                if (i->body->type == PLATFORM && j->body->type == PLATFORM)
+                Body *second = grid[g].bodies[j];
+
+                if (first->type == PLATFORM && second->type == PLATFORM)
                     continue;
 
-                AABB a = generate_aabb (i->body);
-                AABB b = generate_aabb (j->body);
+                AABB a = generate_aabb (first);
+                AABB b = generate_aabb (second);
 
                 if (a.x < b.w && a.w > b.x && a.y < b.h && a.h > b.y)
                 {
@@ -223,8 +216,8 @@ void check ()
                         (a.h <= b.h) ? a.h : b.h,
                     };
 
-                    solve_by_type (i->body, j->body, a, b, c);
-                    solve_by_type (j->body, i->body, b, a, c);
+                    solve_by_type (first, second, a, b, c);
+                    solve_by_type (second, first, b, a, c);
                 }
             }
         }

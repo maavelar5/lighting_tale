@@ -1,7 +1,7 @@
 #ifndef MATH_DATA_HPP
 #define MATH_DATA_HPP
 
-#include "math.h"
+#include <math.h>
 
 struct vec2
 {

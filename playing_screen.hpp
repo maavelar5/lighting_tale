@@ -17,15 +17,17 @@ enum PLAYING_SCREEN_CONFIG
     LIGHT_ROOM      = 16,
 };
 
-void move (Bodies *bodies, Inputs *inputs)
+void move (Bodies &bodies, Inputs &inputs)
 {
-    for (Body *n = bodies->first; n != limit (*bodies); n = n->next)
+    for (int i = 0; i < bodies.length; i++)
     {
-        switch (n->type)
+        Body &b = bodies[i];
+
+        switch (b.type)
         {
-            case ENEMY: move_enemy (n); break;
-            case PLAYER: move_player (n, inputs); break;
-            case PLATFORM: push (&grid, n); break;
+            case ENEMY: move_enemy (b); break;
+            case PLAYER: move_player (b, inputs); break;
+            case PLATFORM: push (grid, &b); break;
             default: break;
         }
     }
@@ -40,41 +42,43 @@ void draw_collision_boxes (Body b)
 
     if (b.sensor & LEFT)
     {
-        push (&squares, { pos, { 1, size.y }, { 1, 0, 0, 1 }, 0, 0 });
+        squares.push ({ pos, { 1, size.y }, { 1, 0, 0, 1 }, 0, 0 });
     }
 
     if (b.sensor & RIGHT)
     {
-        push (&squares, {
-                            pos + (vec2) { size.x, 0 },
-                            { 1, size.y },
-                            { 1, 0, 0, 1 },
-                            0,
-                            0,
-                        });
+        squares.push ({
+            pos + (vec2) { size.x, 0 },
+            { 1, size.y },
+            { 1, 0, 0, 1 },
+            0,
+            0,
+        });
     }
 
     if (b.sensor & TOP)
     {
-        push (&squares, { pos, { size.x, 1 }, { 1, 0, 0, 1 }, 0, 0 });
+        squares.push ({ pos, { size.x, 1 }, { 1, 0, 0, 1 }, 0, 0 });
     }
 
     if (b.sensor & BOT)
     {
-        push (&squares, { pos + (vec2) { 0, size.y },
-                          { size.x, 1 },
-                          { 1, 0, 0, 1 },
-                          0,
-                          0 });
+        squares.push ({ pos + (vec2) { 0, size.y },
+                        { size.x, 1 },
+                        { 1, 0, 0, 1 },
+                        0,
+                        0 });
     }
 
-    push (&squares, { pos, size, { 1, 1, 1, 1 }, 0, 1 });
+    squares.push ({ pos, size, { 1, 1, 1, 1 }, 0, 1 });
 }
 
-void draw (Bodies bodies, Inputs *inputs, bool collision_boxes)
+void draw (Bodies bodies, Inputs &inputs, bool collision_boxes)
 {
-    for (Body *n = bodies.first; n != limit (bodies); n = n->next)
+    for (int i = 0; i < bodies.length; i++)
     {
+        Body *n = &bodies[i];
+
         if (collision_boxes)
             draw_collision_boxes (*n);
 
@@ -121,22 +125,22 @@ void draw_grid (vec2 pos, vec2 size, int types)
         default: sprite = { 0, 0, 16, 16 }; break;
     }
 
-    push (&sprites, { pos, size, sprite, 0, 0, 1 });
-    push (&squares, { pos, size, { 1, 1, 0, 1 }, 0, true });
+    sprites.push ({ pos, size, sprite, 0, 0, 1 });
+    squares.push ({ pos, size, { 1, 1, 0, 1 }, 0, true });
 }
 
 void show_collision_grid ()
 {
-    for (auto i = grid.first; i != 0; i = i->next)
+    for (int i = 0; i < grid.length; i++)
     {
-        push (&squares, {
-                            { (i->x * GRID_SIZE) - camera.x,
-                              (i->y * GRID_SIZE) - camera.y },
-                            { GRID_SIZE, GRID_SIZE },
-                            { 1, 0, .5, 1 },
-                            0,
-                            true,
-                        });
+        squares.push ({
+            { (grid[i].x * GRID_SIZE) - camera.x,
+              (grid[i].y * GRID_SIZE) - camera.y },
+            { GRID_SIZE, GRID_SIZE },
+            { 1, 0, .5, 1 },
+            0,
+            true,
+        });
     }
 }
 
@@ -148,9 +152,9 @@ void editor_screen (SDL_Window *window, Shader shader, int *config)
     static vec2 size = { 16.f, 16.f, }, mouse = { 0.f, 0.f, },
       prev    = { 0.f, 0.f, };
 
-    static Light *light = push (&lights, { mouse, { 16, 16 }, false });
+    static Light *light = &lights.push ({ mouse, { 16, 16 }, false });
 
-    static Inputs inputs = { 0, 0, 0, 0, 0 };
+    static Inputs inputs;
 
     SDL_Event e;
 
@@ -179,9 +183,9 @@ void editor_screen (SDL_Window *window, Shader shader, int *config)
         }
 
         if (e.type == SDL_KEYDOWN && e.key.repeat == 0)
-            push (&inputs, action, (SIMPLE | LOOP));
+            push (inputs, action, (SIMPLE | LOOP));
         else if (e.type == SDL_KEYUP)
-            set_inactive (&inputs, action);
+            set_inactive (inputs, action);
         else if (e.type == SDL_MOUSEMOTION)
         {
             if (!clicked)
@@ -237,21 +241,23 @@ void editor_screen (SDL_Window *window, Shader shader, int *config)
           *decrease_size_w = 0, *decrease_size_h = 0, *increase_editor = 0,
           *decrease_editor = 0;
 
-    for (Input *i = inputs.first; i != limit (inputs); i = i->next)
+    for (int i = 0; i < inputs.length; i++)
     {
-        switch (i->action)
+        Input &input = inputs[i];
+
+        switch (input.action)
         {
-            case MOVE_UP: move_up = i; break;
-            case MOVE_DOWN: move_down = i; break;
-            case MOVE_LEFT: move_left = i; break;
-            case MOVE_RIGHT: move_right = i; break;
-            case INCREASE_W: increase_size_w = i; break;
-            case INCREASE_H: increase_size_h = i; break;
-            case DECREASE_W: decrease_size_w = i; break;
-            case DECREASE_H: decrease_size_h = i; break;
-            case HIDE_EDITOR: hide_editor = i; break;
-            case INCREASE_EDITOR: increase_editor = i; break;
-            case DECREASE_EDITOR: decrease_editor = i; break;
+            case MOVE_UP: move_up = &input; break;
+            case MOVE_DOWN: move_down = &input; break;
+            case MOVE_LEFT: move_left = &input; break;
+            case MOVE_RIGHT: move_right = &input; break;
+            case INCREASE_W: increase_size_w = &input; break;
+            case INCREASE_H: increase_size_h = &input; break;
+            case DECREASE_W: decrease_size_w = &input; break;
+            case DECREASE_H: decrease_size_h = &input; break;
+            case HIDE_EDITOR: hide_editor = &input; break;
+            case INCREASE_EDITOR: increase_editor = &input; break;
+            case DECREASE_EDITOR: decrease_editor = &input; break;
         }
     }
 
@@ -311,23 +317,23 @@ void editor_screen (SDL_Window *window, Shader shader, int *config)
 
     show_collision_grid ();
 
-    push (&glows, { mouse, size, { 0.5f, 0.0f, 0.5f, 0.0f } });
-    draw (bodies, &inputs, (*config & COLLISION_BOXES) ? true : false);
+    glows.push ({ mouse, size, { 0.5f, 0.0f, 0.5f, 0.0f } });
+    draw (bodies, inputs, (*config & COLLISION_BOXES) ? true : false);
 
     draw_grid (prev, size, sprite_index);
 
-    update (&inputs);
+    update (inputs);
 
     if (active (hide_editor))
     {
         *config ^= VISIBLE_EDITOR;
-        reset (&inputs);
+        inputs.length = 0;
     }
 }
 
 void playing_screen (SDL_Window *window, Shader shader, int *config)
 {
-    static Inputs inputs = { 0, 0, 0, 0, 0 };
+    static Inputs inputs;
 
     uint      action = 0;
     SDL_Event e;
@@ -351,23 +357,23 @@ void playing_screen (SDL_Window *window, Shader shader, int *config)
         }
 
         if (e.type == SDL_KEYDOWN && e.key.repeat == 0)
-            push (&inputs, action);
+            push (inputs, action);
         else if (e.type == SDL_KEYUP)
-            set_inactive (&inputs, action);
+            set_inactive (inputs, action);
     }
 
-    for (Input *i = inputs.first; i != limit (inputs); i = i->next)
+    for (int i = 0; i < inputs.length; i++)
     {
-        if (i->timer.state & (DONE | WAIT))
+        if (inputs[i].timer.state & (DONE | WAIT))
             continue;
-        else if (i->action == SHOW_EDITOR)
+        else if (inputs[i].action == SHOW_EDITOR)
         {
             *config |= VISIBLE_EDITOR;
             update_entities ();
         }
-        else if (i->action == TOGGLE_COLLISION_BOXES)
+        else if (inputs[i].action == TOGGLE_COLLISION_BOXES)
             *config ^= COLLISION_BOXES;
-        else if (i->action == TOGGLE_ASPECT_RATIO)
+        else if (inputs[i].action == TOGGLE_ASPECT_RATIO)
         {
             *config ^= ASPECT_RATIO;
             init_frame_buffer (window, true);
@@ -376,21 +382,21 @@ void playing_screen (SDL_Window *window, Shader shader, int *config)
 
     while (time_data::acumulator >= time_data::step)
     {
-        move (&bodies, &inputs);
+        move (bodies, inputs);
         check ();
-        reset (&grid);
+        reset (grid);
 
         time_data::acumulator -= time_data::step;
     }
 
-    // show_collision_grid ();
+    show_collision_grid ();
 
-    draw (bodies, &inputs, (*config & COLLISION_BOXES) ? true : false);
+    draw (bodies, inputs, (*config & COLLISION_BOXES) ? true : false);
 
-    update (&inputs);
+    update (inputs);
 
     if (*config & VISIBLE_EDITOR)
-        reset (&inputs);
+        inputs.length = 0;
 }
 
 void playing_screen (SDL_Window *window, Shader shader)
